@@ -1,0 +1,48 @@
+config:
+  target: "https://melcho-api.onrender.com"
+  phases:
+    - name: Warm up
+      duration: 30
+      arrivalRate: 2
+    - name: Ramp up
+      duration: 60
+      arrivalRate: 5
+      rampTo: 20
+    - name: Sustained load
+      duration: 120
+      arrivalRate: 20
+  defaults:
+    headers:
+      Content-Type: "application/json"
+scenarios:
+  - name: Browse products (anonymous)
+    weight: 50
+    flow:
+      - get:
+          url: "/api/products"
+          expect:
+            - statusCode: 200
+  - name: Login and browse
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: testuser@melcho.com
+            password: TestPassword123!
+          capture:
+            json: $.data.token
+            as: authToken
+      - get:
+          url: "/api/orders/my-orders"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+  - name: Health check
+    weight: 20
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200

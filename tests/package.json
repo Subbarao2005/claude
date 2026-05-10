@@ -1,0 +1,16 @@
+{
+  "name": "melcho-phase4-tests",
+  "private": true,
+  "scripts": {
+    "test:smoke": "npx jest --config jest.config.js deployment/post-deploy-smoke.test.js --forceExit",
+    "test:deploy": "npx jest --config jest.config.js deployment --forceExit",
+    "test:security": "npx jest --config jest.config.js security --forceExit",
+    "test:all": "npm run test:smoke && npm run test:deploy && npm run test:security"
+  },
+  "devDependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.4.5",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
+  }
+}

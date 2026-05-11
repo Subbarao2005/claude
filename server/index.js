@@ -25,6 +25,7 @@ app.use(helmet({
 // ─── CORS CONFIGURATION ──────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:5173',
+  'https://claude-pi-lovat.vercel.app',
   'https://claude-l4uq3x6m2-subbarao-s-projects.vercel.app'
 ]
 
@@ -33,7 +34,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true)
     
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('vercel.app')) {
+    const isAllowed = allowedOrigins.includes(origin) || 
+                     origin.endsWith('.vercel.app') || 
+                     origin.includes('localhost');
+
+    if (isAllowed) {
       callback(null, true)
     } else {
       console.error(`CORS blocked for origin: ${origin}`)

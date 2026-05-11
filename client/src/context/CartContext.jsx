@@ -6,10 +6,12 @@ export const useCart = () => useContext(CartContext);
 
 const getSavedCart = () => {
   try {
-    const saved = localStorage.getItem('melcho_cart');
-    return saved ? JSON.parse(saved) : [];
-  } catch (err) {
-    console.error('Cart parse error:', err);
+    const c = localStorage.getItem('melcho_cart');
+    if (!c || c === 'undefined' || c === 'null') 
+      return [];
+    const parsed = JSON.parse(c);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
     localStorage.removeItem('melcho_cart');
     return [];
   }
@@ -21,42 +23,40 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem('melcho_cart', JSON.stringify(items));
-    } catch (err) {
-      console.error('Cart save error:', err);
+    } catch (e) {
+      console.error('Cart save error:', e);
     }
   }, [items]);
 
   const addToCart = (product) => {
-    setItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item._id === product._id);
-      if (existingItem) {
-        return prevItems.map((item) =>
+    setItems((prev) => {
+      const existing = prev.find((item) => item._id === product._id);
+      if (existing) {
+        return prev.map((item) =>
           item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prevItems, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1 }];
     });
   };
 
   const removeFromCart = (productId) => {
-    setItems((prevItems) => prevItems.filter((item) => item._id !== productId));
+    setItems((prev) => prev.filter((item) => item._id !== productId));
   };
 
-  const updateQuantity = (productId, qty) => {
-    if (qty <= 0) {
+  const updateQuantity = (productId, quantity) => {
+    if (quantity <= 0) {
       removeFromCart(productId);
       return;
     }
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item._id === productId ? { ...item, quantity: qty } : item
+    setItems((prev) =>
+      prev.map((item) =>
+        item._id === productId ? { ...item, quantity } : item
       )
     );
   };
 
-  const clearCart = () => {
-    setItems([]);
-  };
+  const clearCart = () => setItems([]);
 
   const cartTotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
@@ -70,7 +70,7 @@ export const CartProvider = ({ children }) => {
         updateQuantity,
         clearCart,
         cartTotal,
-        cartCount,
+        cartCount
       }}
     >
       {children}

@@ -1,8 +1,6 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
-
 const generateToken = require('../utils/generateToken');
 
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
@@ -14,42 +12,24 @@ const registerUser = async (req, res) => {
     if (!name || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required: name, email, phone, password.',
-        data: null,
+        message: 'All fields are required.'
       });
-    }
-
-    if (name.trim().length < 2) {
-      return res.status(400).json({ success: false, message: 'Name must be at least 2 characters.', data: null });
-    }
-
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({ success: false, message: 'Please provide a valid email address.', data: null });
-    }
-
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian phone number.', data: null });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.', data: null });
     }
 
     // Check for duplicate email
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'An account with this email already exists. Please login instead.',
-        data: null,
+        message: 'Email already registered.'
       });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password with 12 rounds
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
-    const user = await User.create({
+    const newUser = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       phone,
@@ -57,28 +37,23 @@ const registerUser = async (req, res) => {
       role: 'user',
     });
 
-    // Generate JWT
+    // Fetch user without password
+    const user = await User.findById(newUser._id).select('-password');
+
+    // Generate JWT with minimal payload
     const token = generateToken({ id: user._id, role: user.role });
 
     return res.status(201).json({
       success: true,
-      message: 'Account created successfully! Welcome to Melcho.',
-      data: {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      },
+      message: 'Registration successful',
+      token,
+      user
     });
   } catch (error) {
-    console.error('registerUser error:', error.message);
+    console.error('Registration error:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Server error during registration. Please try again.',
-      data: null,
+      message: 'Internal server error'
     });
   }
 };
@@ -91,18 +66,16 @@ const loginUser = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required.',
-        data: null,
+        message: 'Email and password required'
       });
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    // Find user and include password for comparison
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
     if (!user) {
-      return res.status(404).json({
+      return res.status(401).json({
         success: false,
-        message: 'No account found with this email. Please register first.',
-        data: null,
+        message: 'Invalid credentials'
       });
     }
 
@@ -111,32 +84,28 @@ const loginUser = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials. Please check your password.',
-        data: null,
+        message: 'Invalid credentials'
       });
     }
 
+    // Generate JWT
     const token = generateToken({ id: user._id, role: user.role });
+
+    // Clean user object
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful! Welcome back.',
-      data: {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      },
+      message: 'Login successful',
+      token,
+      user: userResponse
     });
   } catch (error) {
-    console.error('loginUser error:', error.message);
+    console.error('Login error:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Server error during login. Please try again.',
-      data: null,
+      message: 'Internal server error'
     });
   }
 };
@@ -149,18 +118,16 @@ const loginAdmin = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required.',
-        data: null,
+        message: 'Email and password required'
       });
     }
 
-    // Find admin
-    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    // Find admin and include password
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() }).select('+password');
     if (!admin) {
-      return res.status(404).json({
+      return res.status(401).json({
         success: false,
-        message: 'No admin account found with this email.',
-        data: null,
+        message: 'Invalid credentials'
       });
     }
 
@@ -168,8 +135,7 @@ const loginAdmin = async (req, res) => {
     if (admin.role !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Not an admin account.',
-        data: null,
+        message: 'Access denied'
       });
     }
 
@@ -178,32 +144,28 @@ const loginAdmin = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials. Please check your password.',
-        data: null,
+        message: 'Invalid credentials'
       });
     }
 
+    // Generate JWT
     const token = generateToken({ id: admin._id, role: admin.role });
+
+    // Clean admin object
+    const adminResponse = admin.toObject();
+    delete adminResponse.password;
 
     return res.status(200).json({
       success: true,
-      message: 'Admin login successful!',
-      data: {
-        token,
-        admin: {
-          id: admin._id,
-          name: admin.name,
-          email: admin.email,
-          role: admin.role,
-        },
-      },
+      message: 'Admin login successful',
+      token,
+      admin: adminResponse
     });
   } catch (error) {
-    console.error('loginAdmin error:', error.message);
+    console.error('Admin login error:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Server error during admin login. Please try again.',
-      data: null,
+      message: 'Internal server error'
     });
   }
 };

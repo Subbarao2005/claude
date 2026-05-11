@@ -5,11 +5,13 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Product title is required'],
     trim: true,
+    maxlength: [200, 'Title cannot exceed 200 characters']
   },
   description: {
     type: String,
     trim: true,
     default: '',
+    maxlength: [500, 'Description cannot exceed 500 characters']
   },
   price: {
     type: Number,
@@ -23,15 +25,18 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Category is required'],
-    enum: [
-      'Bubble Waffle',
-      'Add-On',
-      'The Big Hero Bread',
-      'Fruitella',
-      'Croissants',
-      'Bun & Choco',
-      'Melt-In Moments'
-    ],
+    enum: {
+      values: [
+        'Bubble Waffle',
+        'Add-On',
+        'The Big Hero Bread',
+        'Fruitella',
+        'Croissants',
+        'Bun & Choco',
+        'Melt-In Moments'
+      ],
+      message: '{VALUE} is not a supported category'
+    }
   },
   availability: {
     type: Boolean,

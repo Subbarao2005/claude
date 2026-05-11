@@ -1,168 +1,210 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import { formatCurrency, getStatusColor, getPaymentStatusColor, formatDate, truncateId } from '../../utils/helpers';
-import { ArrowLeft, MapPin, CreditCard, Clock } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Package, 
+  User, 
+  MapPin, 
+  Clock, 
+  Truck, 
+  CheckCircle2, 
+  AlertCircle,
+  Loader2,
+  Mail,
+  Phone
+} from 'lucide-react';
 
 export default function AdminOrderDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
-  const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [statusUpdating, setStatusUpdating] = useState(false);
-
-  const fetchOrderAndPayment = async () => {
-    try {
-      const [orderRes, paymentRes] = await Promise.allSettled([
-        api.get(`/orders/${id}`),
-        api.get(`/payment/order/${id}`)
-      ]);
-
-      if (orderRes.status === 'fulfilled' && orderRes.value.data.success) {
-        setOrder(orderRes.value.data.order);
-      }
-      
-      if (paymentRes.status === 'fulfilled' && paymentRes.value.data.success) {
-        setPayment(paymentRes.value.data.payment);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    fetchOrderAndPayment();
+    const fetchOrder = async () => {
+      try {
+        const res = await api.get(`/orders/${id}`);
+        if (res.data.success) {
+          setOrder(res.data.order);
+        }
+      } catch (err) {
+        console.error('Failed to fetch order detail:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrder();
   }, [id]);
 
-  const handleStatusUpdate = async (newStatus) => {
-    setStatusUpdating(true);
+  const updateStatus = async (newStatus) => {
     try {
-      const res = await api.put(`/orders/${id}/status`, { status: newStatus });
+      setUpdating(true);
+      const res = await api.put(`/orders/admin/${id}/status`, { status: newStatus });
       if (res.data.success) {
         setOrder(res.data.order);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update status');
+      alert('Failed to update status');
     } finally {
-      setStatusUpdating(false);
+      setUpdating(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="animate-spin w-12 h-12 border-4 border-gray-300 border-t-gray-900 rounded-full"></div></div>;
-  if (!order) return <div className="p-8 text-center text-red-500">Order not found</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-40">
+        <Loader2 className="animate-spin text-amber-600" size={48} />
+      </div>
+    );
+  }
 
-  const orderStatuses = ["Pending", "Accepted", "Preparing", "Out for Delivery", "Delivered", "Rejected"];
+  if (!order) {
+    return (
+      <div className="p-8 text-center py-20">
+        <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold">Order not found</h2>
+        <button onClick={() => navigate('/admin/orders')} className="mt-4 text-amber-600 font-bold">Back to Orders</button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        <div className="mb-6 flex justify-between items-center">
-          <Link to="/admin/orders" className="inline-flex items-center text-gray-500 hover:text-gray-900 font-medium transition-colors">
-            <ArrowLeft size={16} className="mr-2" /> Back to Orders
-          </Link>
-          
-          {/* Status Updater */}
-          <div className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
-            <span className="text-sm font-medium text-gray-500 ml-2">Update Status:</span>
-            <select
-              value={order.orderStatus}
-              onChange={(e) => handleStatusUpdate(e.target.value)}
-              disabled={statusUpdating || order.orderStatus === 'Cancelled'}
-              className={`text-sm font-bold rounded-md px-3 py-1.5 outline-none cursor-pointer ${getStatusColor(order.orderStatus)}`}
-            >
-              {order.orderStatus === 'Cancelled' && <option value="Cancelled">Cancelled</option>}
-              {orderStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {statusUpdating && <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mr-2"></div>}
-          </div>
-        </div>
+    <div className="p-8 bg-slate-50 min-h-screen">
+      <button 
+        onClick={() => navigate('/admin/orders')}
+        className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition-colors mb-8"
+      >
+        <ArrowLeft size={20} />
+        Back to Orders
+      </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left Col: Order Items & Totals */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-              <div className="border-b border-gray-100 pb-6 mb-6">
-                <h1 className="font-playfair text-2xl font-bold text-gray-900 mb-2">Order {truncateId(order._id)}</h1>
-                <div className="flex items-center text-gray-500 text-sm gap-4">
-                  <span className="flex items-center gap-1"><Clock size={14} /> {formatDate(order.createdAt)}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold ${getPaymentStatusColor(order.paymentStatus)}`}>{order.paymentStatus}</span>
-                </div>
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Main Content */}
+        <div className="flex-grow space-y-8">
+          {/* Order Status Card */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-3xl font-playfair font-bold text-slate-900">Order #{order._id.slice(-8).toUpperCase()}</h1>
+                <p className="text-slate-500 mt-1 flex items-center gap-2">
+                  <Clock size={16} />
+                  Placed on {new Date(order.createdAt).toLocaleString()}
+                </p>
               </div>
-
-              <div className="space-y-4 mb-8">
-                {order.products.map(item => (
-                  <div key={item._id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                    <div className="flex gap-4 items-center">
-                      <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-500">
-                        {item.quantity}x
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900">{item.title}</p>
-                        <p className="text-sm text-gray-500">{formatCurrency(item.price)} each</p>
-                      </div>
-                    </div>
-                    <p className="font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
-                  </div>
+              <div className="flex gap-2">
+                {['pending', 'processing', 'shipped', 'delivered'].map((s) => (
+                  <button
+                    key={s}
+                    disabled={updating || order.status === s}
+                    onClick={() => updateStatus(s)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      order.status === s 
+                        ? 'bg-amber-600 text-white shadow-lg shadow-amber-100' 
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {s.toUpperCase()}
+                  </button>
                 ))}
               </div>
-
-              <div className="flex justify-between items-center pt-6 border-t border-gray-100">
-                <span className="text-xl text-gray-500 font-medium">Total Amount</span>
-                <span className="text-3xl font-bold text-amber-700">{formatCurrency(order.totalAmount)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Col: Customer Info */}
-          <div className="space-y-8">
-            
-            {/* Delivery Info */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-              <h2 className="font-playfair text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <MapPin size={20} className="text-amber-600" /> Delivery Details
-              </h2>
-              <div className="text-sm text-gray-600 space-y-2 bg-gray-50 p-4 rounded-xl">
-                <p className="font-bold text-gray-900">{order.address.phone}</p>
-                <p>{order.address.street}</p>
-                {order.address.landmark && <p>Landmark: {order.address.landmark}</p>}
-                <p>{order.address.city} - {order.address.pincode}</p>
-              </div>
             </div>
 
-            {/* Payment Info */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-              <h2 className="font-playfair text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard size={20} className="text-amber-600" /> Payment Info
-              </h2>
-              <div className="text-sm text-gray-600 space-y-3 bg-gray-50 p-4 rounded-xl">
-                <div className="flex justify-between border-b border-gray-200 pb-2">
-                  <span>Status</span>
-                  <span className={`font-bold ${order.paymentStatus === 'successful' ? 'text-green-600' : 'text-red-600'}`}>{order.paymentStatus}</span>
+            {/* Items Table */}
+            <div className="border border-slate-100 rounded-3xl overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left font-bold text-slate-700">Item</th>
+                    <th className="px-6 py-4 text-center font-bold text-slate-700">Qty</th>
+                    <th className="px-6 py-4 text-right font-bold text-slate-700">Price</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {order.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="px-6 py-4 flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
+                          {item.product?.image ? (
+                            <img src={item.product.image} className="w-full h-full object-cover rounded-xl" />
+                          ) : (
+                            <Package size={20} className="text-slate-300" />
+                          )}
+                        </div>
+                        <span className="font-bold text-slate-900">{item.product?.title || 'Unknown Product'}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center font-bold text-slate-600">{item.quantity}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-900">₹{item.price * item.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-slate-100 flex justify-end">
+              <div className="w-64 space-y-3">
+                <div className="flex justify-between text-slate-500">
+                  <span>Subtotal</span>
+                  <span>₹{order.totalAmount}</span>
                 </div>
-                {payment && (
-                  <>
-                    <div className="flex justify-between border-b border-gray-200 pb-2">
-                      <span>Gateway</span>
-                      <span className="font-mono text-xs">Razorpay</span>
-                    </div>
-                    {payment.razorpayPaymentId && (
-                      <div className="flex justify-between">
-                        <span>Ref ID</span>
-                        <span className="font-mono text-xs text-gray-900">{payment.razorpayPaymentId}</span>
-                      </div>
-                    )}
-                  </>
-                )}
+                <div className="flex justify-between text-slate-500">
+                  <span>Delivery</span>
+                  <span className="text-emerald-600 font-bold">FREE</span>
+                </div>
+                <div className="flex justify-between text-2xl font-playfair font-bold text-slate-900 pt-3 border-t border-slate-100">
+                  <span>Total</span>
+                  <span>₹{order.totalAmount}</span>
+                </div>
               </div>
             </div>
-
           </div>
         </div>
 
+        {/* Sidebar */}
+        <div className="lg:w-96 space-y-8">
+          {/* Customer Info */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <User size={20} className="text-amber-600" />
+              Customer
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <User size={18} className="text-slate-400" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900">{order.user?.name || 'Guest'}</p>
+                  <p className="text-xs text-slate-500">User ID: #{order.user?._id?.slice(-6).toUpperCase()}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Mail size={18} className="text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600 truncate">{order.user?.email}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Phone size={18} className="text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600">{order.user?.phone || 'No phone'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Shipping Address */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <MapPin size={20} className="text-amber-600" />
+              Shipping
+            </h3>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-slate-600 text-sm leading-relaxed font-medium">
+              {order.shippingAddress || 'Store Pickup'}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

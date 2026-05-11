@@ -18,10 +18,10 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
-import AdminLoginPage from './pages/LoginPage'; // Admin uses same login or specific if needed
-import AdminDashboard from './pages/AdminDashboard';
-import AdminOrders from './pages/OrderHistoryPage'; // Placeholder if specific admin orders page missing
-import AdminProducts from './pages/MenuPage'; // Placeholder if specific admin products page missing
+import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminProducts from './pages/admin/AdminProducts';
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -48,10 +48,10 @@ export default function App() {
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderTrackingPage /></ProtectedRoute>} />
 
                 {/* Admin Routes */}
-                <Route path="/admin/login" element={<LoginPage />} /> {/* Reusing Login for simplicity */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
                 <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                <Route path="/admin/orders" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                <Route path="/admin/products" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+                <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
 
                 {/* Catch All */}
                 <Route path="*" element={<Navigate to="/" replace />} />

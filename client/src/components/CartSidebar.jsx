@@ -66,17 +66,17 @@ export default function CartSidebar({ isOpen, onClose }) {
             items.map((item) => (
               <div key={item._id} className="flex gap-4 group">
                 <div className="w-20 h-20 bg-amber-50 rounded-2xl overflow-hidden flex-shrink-0 border border-amber-100">
-                  {item.image ? (
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                  {item.product.image ? (
+                    <img src={item.product.image} alt={item.product.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-amber-200 text-3xl font-playfair">
-                      {item.title.charAt(0)}
+                      {item.product.title.charAt(0)}
                     </div>
                   )}
                 </div>
                 <div className="flex-grow">
                   <div className="flex justify-between items-start mb-1">
-                    <h4 className="font-bold text-gray-900 leading-tight pr-4">{item.title}</h4>
+                    <h4 className="font-bold text-gray-900 leading-tight pr-4">{item.product.title}</h4>
                     <button 
                       onClick={() => removeFromCart(item._id)}
                       className="text-gray-300 hover:text-red-500 transition-colors"
@@ -84,7 +84,7 @@ export default function CartSidebar({ isOpen, onClose }) {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <p className="text-amber-600 font-bold mb-3">₹{item.price}</p>
+                  <p className="text-amber-600 font-bold mb-3">₹{item.product.price}</p>
                   
                   <div className="flex items-center gap-4">
                     <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
@@ -102,7 +102,7 @@ export default function CartSidebar({ isOpen, onClose }) {
                         <Plus size={14} />
                       </button>
                     </div>
-                    <span className="text-gray-400 text-sm font-medium">Total: ₹{item.price * item.quantity}</span>
+                    <span className="text-gray-400 text-sm font-medium">Total: ₹{item.product.price * item.quantity}</span>
                   </div>
                 </div>
               </div>

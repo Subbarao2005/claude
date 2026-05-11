@@ -36,7 +36,7 @@ export const CartProvider = ({ children }) => {
           item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { product, quantity: 1, _id: product._id }];
     });
   };
 
@@ -58,7 +58,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => setItems([]);
 
-  const cartTotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+  const cartTotal = items.reduce((total, item) => total + item.product.price * item.quantity, 0);
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
 
   return (

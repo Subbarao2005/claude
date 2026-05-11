@@ -1,78 +1,120 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext();
+
+export const useAuth = () => useContext(AuthContext);
+
+const getSavedToken = () => {
+  try {
+    return localStorage.getItem('melcho_token') || null;
+  } catch {
+    return null;
+  }
+};
+
+const getSavedUser = () => {
+  try {
+    const saved = localStorage.getItem('melcho_user');
+    return saved ? JSON.parse(saved) : null;
+  } catch (err) {
+    console.error('User parse error:', err);
+    localStorage.removeItem('melcho_user');
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(getSavedToken());
+  const [user, setUser] = useState(getSavedUser());
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+  const isAuthenticated = !!token;
+  const isAdmin = user?.role === 'admin';
+
+  const register = async (name, email, phone, password) => {
+    try {
+      setLoading(true);
+      const res = await api.post('/auth/register', { name, email, phone, password });
+      if (res.data.success) {
+        const { token, user } = res.data;
+        setToken(token);
+        setUser(user);
+        localStorage.setItem('melcho_token', token);
+        localStorage.setItem('melcho_user', JSON.stringify(user));
+        return { success: true, data: res.data };
+      }
+      return { success: false, message: res.data.message || 'Registration failed' };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Server error during registration' };
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  };
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    if (res.data.success) {
-      setToken(res.data.token);
-      setUser(res.data.user);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+    try {
+      setLoading(true);
+      const res = await api.post('/auth/login', { email, password });
+      if (res.data.success) {
+        const { token, user } = res.data;
+        setToken(token);
+        setUser(user);
+        localStorage.setItem('melcho_token', token);
+        localStorage.setItem('melcho_user', JSON.stringify(user));
+        return { success: true, data: res.data };
+      }
+      return { success: false, message: res.data.message || 'Login failed' };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Invalid credentials' };
+    } finally {
+      setLoading(false);
     }
-    return res.data;
   };
 
   const adminLogin = async (email, password) => {
-    const res = await api.post('/auth/admin/login', { email, password });
-    if (res.data.success) {
+    try {
+      setLoading(true);
+      const res = await api.post('/auth/admin/login', { email, password });
       const userData = res.data.admin || res.data.user;
-      setToken(res.data.token);
-      setUser(userData);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      if (res.data.success && userData?.role === 'admin') {
+        const { token } = res.data;
+        setToken(token);
+        setUser(userData);
+        localStorage.setItem('melcho_token', token);
+        localStorage.setItem('melcho_user', JSON.stringify(userData));
+        return { success: true, data: res.data };
+      }
+      return { success: false, message: 'Access denied. Admins only.' };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Invalid admin credentials' };
+    } finally {
+      setLoading(false);
     }
-    return res.data;
-  };
-
-  const register = async (name, email, phone, password) => {
-    const res = await api.post('/auth/register', { name, email, phone, password });
-    return res.data;
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    localStorage.removeItem('melcho_token');
+    localStorage.removeItem('melcho_user');
   };
 
-  const isAuthenticated = !!token;
-  const isAdmin = user?.role === 'admin';
-
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      loading, 
-      login, 
-      adminLogin, 
-      register, 
-      logout, 
-      isAuthenticated, 
-      isAdmin 
-    }}>
-      {!loading && children}
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        loading,
+        isAuthenticated,
+        isAdmin,
+        register,
+        login,
+        adminLogin,
+        logout,
+      }}
+    >
+      {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

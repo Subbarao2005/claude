@@ -1,0 +1,4 @@
+# Nothing to ignore — deploy everything
+node_modules
+.env
+.env.local

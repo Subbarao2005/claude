@@ -1,76 +1,73 @@
 import { useCart } from '../context/CartContext';
-import { formatCurrency } from '../utils/helpers';
-import { Minus, Plus, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, ShoppingCart } from 'lucide-react';
 
-export default function ProductCard({ product, showAddToCart = false }) {
+export default function ProductCard({ product, showAddToCart }) {
   const { items, addToCart, updateQuantity } = useCart();
   
-  const cartItem = items.find(item => item.product._id === product._id);
-  const qtyInCart = cartItem ? cartItem.quantity : 0;
+  const cartItem = items.find(item => item._id === product._id);
+  const quantity = cartItem ? cartItem.quantity : 0;
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-amber-100 flex flex-col h-full group">
-      {/* Image */}
-      <div className="relative h-56 w-full bg-amber-50 overflow-hidden">
+    <div className="group bg-white rounded-[2.5rem] overflow-hidden border border-amber-100 hover:shadow-2xl hover:shadow-amber-200/50 transition-all duration-500 flex flex-col h-full">
+      {/* Image Section */}
+      <div className="relative h-64 overflow-hidden bg-amber-50">
         {product.image ? (
           <img 
             src={product.image} 
-            alt={product.title} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            alt={product.title}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200 text-amber-700 font-playfair text-6xl opacity-50">
+          <div className="w-full h-full flex items-center justify-center text-amber-200 font-playfair text-8xl">
             {product.title.charAt(0)}
           </div>
         )}
-        <div className="absolute top-4 left-4">
-          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-            {product.category}
-          </span>
+        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-4 py-1 rounded-full text-amber-600 font-bold shadow-sm">
+          ₹{product.price}
         </div>
+        {product.category && (
+          <div className="absolute top-4 left-4 bg-amber-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+            {product.category}
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="p-6 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-2 gap-2">
-          <h3 className="font-playfair font-bold text-xl text-gray-900 line-clamp-2 leading-tight">
-            {product.title}
-          </h3>
-          <span className="font-bold text-amber-700 whitespace-nowrap text-lg">
-            {formatCurrency(product.price)}
-          </span>
-        </div>
-        
+      {/* Content Section */}
+      <div className="p-8 flex flex-col flex-grow">
+        <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">
+          {product.title}
+        </h3>
         <p className="text-gray-500 text-sm line-clamp-2 mb-6 flex-grow">
-          {product.description || 'Delicious handcrafted dessert.'}
+          {product.description || 'Experience the premium taste of Melcho desserts.'}
         </p>
 
+        {/* Action Button */}
         {showAddToCart && (
           <div className="mt-auto">
-            {qtyInCart > 0 ? (
-              <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-full p-1 shadow-inner">
-                <button 
-                  onClick={() => updateQuantity(product._id, qtyInCart - 1)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-white text-amber-700 shadow hover:bg-amber-100 transition-colors"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="font-bold w-8 text-center text-gray-900">{qtyInCart}</span>
-                <button 
-                  onClick={() => updateQuantity(product._id, qtyInCart + 1)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-amber-600 text-white shadow hover:bg-amber-700 transition-colors"
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
-            ) : (
-              <button 
+            {quantity === 0 ? (
+              <button
                 onClick={() => addToCart(product)}
-                className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-full font-semibold transition-colors shadow-md shadow-amber-200/50"
+                className="w-full bg-amber-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-amber-700 transition-all shadow-lg shadow-amber-200"
               >
-                <ShoppingCart size={18} />
+                <ShoppingCart size={20} />
                 Add to Cart
               </button>
+            ) : (
+              <div className="flex items-center justify-between bg-amber-50 rounded-2xl p-1 border border-amber-200">
+                <button
+                  onClick={() => updateQuantity(product._id, quantity - 1)}
+                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-white text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                >
+                  <Minus size={20} />
+                </button>
+                <span className="font-bold text-xl text-gray-800">{quantity}</span>
+                <button
+                  onClick={() => updateQuantity(product._id, quantity + 1)}
+                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-white text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
             )}
           </div>
         )}

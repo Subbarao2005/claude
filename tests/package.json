@@ -5,12 +5,19 @@
     "test:smoke": "npx jest --config jest.config.js deployment/post-deploy-smoke.test.js --forceExit",
     "test:deploy": "npx jest --config jest.config.js deployment --forceExit",
     "test:security": "npx jest --config jest.config.js security --forceExit",
+    "test:e2e": "npx playwright test",
+    "test:e2e:customer": "npx playwright test e2e/customer.spec.js",
+    "test:e2e:admin": "npx playwright test e2e/admin.spec.js",
+    "test:e2e:mobile": "npx playwright test e2e/mobile.spec.js",
+    "test:performance": "echo 'Performance tests require Artillery or k6. Skipping in default mode.'",
     "test:all": "npm run test:smoke && npm run test:deploy && npm run test:security"
   },
   "devDependencies": {
+    "@playwright/test": "^1.44.0",
     "axios": "^1.6.0",
     "dotenv": "^16.4.5",
     "jest": "^29.7.0",
+    "jsonwebtoken": "^9.0.2",
     "supertest": "^6.3.4"
   }
 }

@@ -67,7 +67,8 @@ jobs:
       - name: Deploy to Vercel
         run: |
           vercel --prod --yes \
-            --token "${{ secrets.VERCEL_TOKEN }}"
+            --token "${{ secrets.VERCEL_TOKEN }}" \
+            --build-env VITE_API_URL="${{ secrets.API_URL }}/api"
         working-directory: client
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

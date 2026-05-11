@@ -147,6 +147,34 @@ app.use('/api/products', productRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/payment', paymentRoutes)
 
+// ─── EMERGENCY ADMIN SEED ROUTE ──────────────────────────────────────────────
+// Visit this URL once to create the admin account in production
+// URL: https://melcho-api.onrender.com/api/admin-setup-emergency
+app.get('/api/admin-setup-emergency', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const Admin = require('./models/Admin');
+    const email = 'admin@melcho.com';
+    
+    const existing = await Admin.findOne({ email });
+    if (existing) {
+      return res.status(200).json({ success: true, message: "Admin already exists!" });
+    }
+
+    const hashedPassword = await bcrypt.hash('Admin@Melcho2024', 12);
+    await Admin.create({
+      name: 'Melcho Admin',
+      email: email,
+      password: hashedPassword,
+      role: 'admin'
+    });
+
+    res.status(201).json({ success: true, message: "Admin account created successfully! You can now login." });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ─── DATABASE CONNECTION ──────────────────────────────────────────────────────
 const connectDB = require('./config/db')
 connectDB()

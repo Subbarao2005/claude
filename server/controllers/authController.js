@@ -127,7 +127,7 @@ const loginAdmin = async (req, res) => {
     if (!admin) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: `Admin account (${email}) not found in database`
       });
     }
 
@@ -144,7 +144,7 @@ const loginAdmin = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Password incorrect for this admin account'
       });
     }
 

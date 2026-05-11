@@ -1,15 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import api from '../../api/axios';
+import { Lock, Mail, Loader2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverStatus, setServerStatus] = useState('checking');
   const { adminLogin } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        await api.get('/');
+        setServerStatus('online');
+      } catch (err) {
+        setServerStatus('offline');
+        setError('Cannot connect to Melcho Server. Please check if the backend is running.');
+      }
+    };
+    checkServer();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,7 +39,7 @@ export default function AdminLoginPage() {
         setError(result.message || 'Invalid admin credentials');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError(err.response?.data?.message || 'A network error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -39,19 +54,32 @@ export default function AdminLoginPage() {
               <Lock className="text-amber-600" size={32} />
             </div>
             <h1 className="text-3xl font-playfair font-bold text-slate-900">Admin Portal</h1>
-            <p className="text-slate-500 mt-2">Sign in to manage Melcho</p>
+            
+            <div className="mt-2 flex items-center justify-center gap-2">
+              {serverStatus === 'online' ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full">
+                  <Wifi size={10} /> Server Online
+                </span>
+              ) : serverStatus === 'offline' ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded-full">
+                  <WifiOff size={10} /> Server Offline
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Checking Connection...</span>
+              )}
+            </div>
           </div>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3 text-sm">
               <AlertCircle size={20} className="flex-shrink-0" />
-              {error}
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
+              <label className="text-sm font-semibold text-slate-700 ml-1">Admin Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input
@@ -82,8 +110,8 @@ export default function AdminLoginPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
+              disabled={isSubmitting || serverStatus === 'offline'}
+              className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -91,7 +119,7 @@ export default function AdminLoginPage() {
                   Verifying...
                 </>
               ) : (
-                'Sign In'
+                'Sign In to Dashboard'
               )}
             </button>
           </form>

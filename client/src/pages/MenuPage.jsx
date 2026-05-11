@@ -3,6 +3,17 @@ import ProductCard from '../components/ProductCard';
 import api from '../api/axios';
 import { Search } from 'lucide-react';
 
+const CATEGORIES = [
+  'All',
+  'Bubble Waffle',
+  'Add-On',
+  'The Big Hero Bread',
+  'Fruitella',
+  'Croissants',
+  'Bun & Choco',
+  'Melt-In Moments'
+];
+
 export default function MenuPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,24 +24,20 @@ export default function MenuPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setLoading(true);
         const res = await api.get('/products');
         if (res.data.success) {
           setProducts(res.data.products);
         }
       } catch (err) {
         setError('Failed to load menu. Please try again later.');
-        console.error(err);
+        console.error('Menu fetch error:', err);
       } finally {
         setLoading(false);
       }
     };
     fetchProducts();
   }, []);
-
-  const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category));
-    return ['All', ...Array.from(cats)];
-  }, [products]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -51,13 +58,13 @@ export default function MenuPage() {
         {/* Filters & Search */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
           <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-            {categories.map(c => (
+            {CATEGORIES.map(c => (
               <button
                 key={c}
                 onClick={() => setCategory(c)}
-                className={`px-5 py-2 rounded-full font-medium transition-colors ${
+                className={`px-5 py-2 rounded-full font-medium transition-all ${
                   category === c 
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-200' 
+                    ? 'bg-amber-600 text-white shadow-md' 
                     : 'bg-white text-gray-600 hover:bg-amber-100 border border-amber-200'
                 }`}
               >
@@ -81,7 +88,7 @@ export default function MenuPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-8 text-center border border-red-100">
+          <div className="bg-red-50 text-red-600 p-6 rounded-2xl mb-8 text-center border border-red-100">
             {error}
           </div>
         )}

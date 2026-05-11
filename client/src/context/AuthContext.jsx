@@ -9,8 +9,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('melcho_token');
-    const storedUser = localStorage.getItem('melcho_user');
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
     
     if (storedToken && storedUser) {
       setToken(storedToken);
@@ -24,8 +24,8 @@ export const AuthProvider = ({ children }) => {
     if (res.data.success) {
       setToken(res.data.token);
       setUser(res.data.user);
-      localStorage.setItem('melcho_token', res.data.token);
-      localStorage.setItem('melcho_user', JSON.stringify(res.data.user));
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
     }
     return res.data;
   };
@@ -33,35 +33,43 @@ export const AuthProvider = ({ children }) => {
   const adminLogin = async (email, password) => {
     const res = await api.post('/auth/admin/login', { email, password });
     if (res.data.success) {
-      setToken(res.data.token);
-      setUser(res.data.admin); // server returns { admin: ... } based on Phase 1 structure or user object. Let's assume user or admin field.
-      // Normalize user/admin
       const userData = res.data.admin || res.data.user;
-      localStorage.setItem('melcho_token', res.data.token);
-      localStorage.setItem('melcho_user', JSON.stringify(userData));
+      setToken(res.data.token);
+      setUser(userData);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
     }
     return res.data;
   };
 
   const register = async (name, email, phone, password) => {
     const res = await api.post('/auth/register', { name, email, phone, password });
-    // Usually register doesn't auto login unless implemented in backend. Return res directly.
     return res.data;
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('melcho_token');
-    localStorage.removeItem('melcho_user');
-    window.location.href = '/';
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   };
 
   const isAuthenticated = !!token;
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, adminLogin, register, logout, isAuthenticated, isAdmin }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      loading, 
+      login, 
+      adminLogin, 
+      register, 
+      logout, 
+      isAuthenticated, 
+      isAdmin 
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

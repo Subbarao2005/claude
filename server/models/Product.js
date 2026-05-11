@@ -22,8 +22,16 @@ const productSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['Cakes', 'Pastries', 'Puddings', 'Specials'],
-    default: 'Cakes',
+    required: [true, 'Category is required'],
+    enum: [
+      'Bubble Waffle',
+      'Add-On',
+      'The Big Hero Bread',
+      'Fruitella',
+      'Croissants',
+      'Bun & Choco',
+      'Melt-In Moments'
+    ],
   },
   availability: {
     type: Boolean,

@@ -10,7 +10,7 @@ const getAllProducts = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Products retrieved successfully',
+      message: "Products retrieved successfully",
       products,
       count: products.length,
     });
@@ -52,7 +52,6 @@ const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -91,20 +90,10 @@ const createProduct = async (req, res) => {
   try {
     const { title, price, category, description, image, availability } = req.body;
 
-    // Validate required fields
     if (!title || price === undefined || !category) {
       return res.status(400).json({
         success: false,
         message: 'Title, price, and category are required',
-        product: null,
-      });
-    }
-
-    // Validate price is positive number
-    if (typeof price !== 'number' || price <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Price must be a positive number',
         product: null,
       });
     }
@@ -141,20 +130,10 @@ const updateProduct = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid product ID format',
-        product: null,
-      });
-    }
-
-    // Validate price if provided
-    if (updates.price !== undefined && (typeof updates.price !== 'number' || updates.price <= 0)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Price must be a positive number',
         product: null,
       });
     }
@@ -193,7 +172,6 @@ const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,

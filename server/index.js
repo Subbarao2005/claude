@@ -107,6 +107,14 @@ app.get('/', (req, res) => {
   })
 })
 
+// API Base Route (Fixes 404 when frontend checks connectivity)
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Melcho API v1 Base Route"
+  })
+})
+
 // Legacy Health Route
 app.get('/health', (req, res) => {
   res.status(200).json({

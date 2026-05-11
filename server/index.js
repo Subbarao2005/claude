@@ -13,122 +13,134 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5000
 
-// 1. CORS — FIRST middleware
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow no-origin requests (Postman, health checks)
-    if (!origin) return callback(null, true)
-    
-    // Allow all localhost ports
-    if (origin.includes('localhost')) 
-      return callback(null, true)
-    
-    // Allow ALL vercel.app subdomains
-    if (origin.includes('vercel.app')) 
-      return callback(null, true)
-    
-    // Allow any specific origins from env
-    const extras = (process.env.ALLOWED_ORIGINS || '')
-      .split(',').map(o => o.trim()).filter(Boolean)
-    if (extras.includes(origin)) 
-      return callback(null, true)
-    
-    // Log but still allow in development - you can restrict this in prod if desired
-    return callback(null, true)
-  },
-  credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
-  allowedHeaders: [
-    'Content-Type','Authorization',
-    'X-Requested-With','Accept','Origin'
-  ]
-}))
-app.options('*', cors())
+// ─── PRODUCTION PROXY HANDLING ──────────────────────────────────────────────
+// Required for Render/Vercel/Heroku to correctly identify client IPs for rate limiting
+app.set('trust proxy', 1)
 
-// 2. Security headers
+// ─── SECURITY HEADERS ────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }))
 
-// 3. Rate limiting
+// ─── CORS CONFIGURATION ──────────────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://claude-l4uq3x6m2-subbarao-s-projects.vercel.app'
+]
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('vercel.app')) {
+      callback(null, true)
+    } else {
+      console.error(`CORS blocked for origin: ${origin}`)
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}))
+app.options('*', cors())
+
+// ─── RATE LIMITING ────────────────────────────────────────────────────────────
+// Prevents brute-force and DDoS attacks
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: { success: false, message: 'Too many requests' },
-  standardHeaders: true,
-  legacyHeaders: false
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes'
+  },
+  // Specifically for Render to avoid validation warnings
+  validate: { trustProxy: false } 
 })
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 10, // Stricter limit for auth routes
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { 
     success: false, 
-    message: 'Too many auth attempts. Try again in 15 minutes.' 
-  }
+    message: 'Too many login attempts. Please try again after 15 minutes.' 
+  },
+  validate: { trustProxy: false }
 })
 
+// Apply limiters
 app.use('/api', globalLimiter)
 app.use('/api/auth', authLimiter)
 
-// 4. Body parsers
+// ─── BODY PARSERS ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// 5. Sanitization
-app.use(mongoSanitize())
-app.use(xss())
+// ─── DATA SANITIZATION ────────────────────────────────────────────────────────
+app.use(mongoSanitize()) // Against NoSQL query injection
+app.use(xss()) // Against XSS
 
-// 6. Logging
+// ─── LOGGING ──────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan(
-    process.env.NODE_ENV === 'production' ? 'combined' : 'dev'
-  ))
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 }
 
-// 7. Health check
+// ─── ROUTES ───────────────────────────────────────────────────────────────────
+
+// Root Health Route (Required for Render Health Checks)
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Melcho API Running",
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  })
+})
+
+// Legacy Health Route
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    database: mongoose.connection.readyState === 1
-      ? 'connected' : 'disconnected',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     uptime: Math.floor(process.uptime())
   })
 })
 
-// 8. Debug route
+// API Debug Route
 app.get('/api/debug', (req, res) => {
   res.status(200).json({
     status: 'running',
     mongoUri: process.env.MONGO_URI ? 'SET' : 'MISSING',
     jwtSecret: process.env.JWT_SECRET ? 'SET' : 'MISSING',
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID 
-      ? 'SET' : 'MISSING',
-    razorpaySecret: process.env.RAZORPAY_KEY_SECRET 
-      ? 'SET' : 'MISSING',
     nodeEnv: process.env.NODE_ENV,
     port: PORT
   })
 })
 
-// 9. Database
-const connectDB = require('./config/db')
-connectDB()
-
-// 10. Routes
+// Import Route Handlers
 const authRoutes = require('./routes/authRoutes')
 const productRoutes = require('./routes/productRoutes')
 const orderRoutes = require('./routes/orderRoutes')
 const paymentRoutes = require('./routes/paymentRoutes')
 
+// Mount Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/payment', paymentRoutes)
 
-// 11. 404 handler
+// ─── DATABASE CONNECTION ──────────────────────────────────────────────────────
+const connectDB = require('./config/db')
+connectDB()
+
+// ─── ERROR HANDLING ───────────────────────────────────────────────────────────
+
+// 404 Handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -136,21 +148,41 @@ app.use('*', (req, res) => {
   })
 })
 
-// 12. Global error handler
+// Centralized Global Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(err.status || 500).json({
+  const statusCode = err.status || 500
+  console.error(`[ERROR] ${req.method} ${req.url} : ${err.message}`)
+  if (process.env.NODE_ENV !== 'production') console.error(err.stack)
+
+  res.status(statusCode).json({
     success: false,
-    message: process.env.NODE_ENV === 'production'
+    message: process.env.NODE_ENV === 'production' && statusCode === 500
       ? 'Internal server error'
       : err.message
   })
 })
 
-module.exports = app
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-    console.log(`Environment: ${process.env.NODE_ENV}`)
+// ─── SERVER START & GRACEFUL SHUTDOWN ─────────────────────────────────────────
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Melcho Server running on port ${PORT}`)
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`)
+})
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error(`[CRITICAL] Unhandled Rejection: ${err.message}`)
+  server.close(() => process.exit(1))
+})
+
+// Handle SIGTERM (e.g., from Render during redeploy)
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received. Shutting down gracefully...')
+  server.close(() => {
+    mongoose.connection.close(false, () => {
+      console.log('📦 Database connection closed.')
+      process.exit(0)
+    })
   })
-}
+})
+
+module.exports = app

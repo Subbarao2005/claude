@@ -16,7 +16,9 @@ import {
   RefreshCw, 
   Download, 
   ChevronRight,
-  ArrowUpDown
+  ArrowUpDown,
+  ShoppingBag,
+  Activity
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -38,7 +40,6 @@ export default function AdminOrders() {
   const [filterPayment, setFilterPayment] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal state for reason input
   const [reasonModal, setReasonModal] = useState({ isOpen: false, orderId: null, nextStatus: null });
 
   useEffect(() => {
@@ -65,15 +66,8 @@ export default function AdminOrders() {
 
   const applyFilters = () => {
     let result = [...orders];
-
-    if (filterStatus !== 'All') {
-      result = result.filter(o => o.orderStatus === filterStatus);
-    }
-
-    if (filterPayment !== 'All') {
-      result = result.filter(o => o.paymentStatus === filterPayment.toLowerCase());
-    }
-
+    if (filterStatus !== 'All') result = result.filter(o => o.orderStatus === filterStatus);
+    if (filterPayment !== 'All') result = result.filter(o => o.paymentStatus === filterPayment.toLowerCase());
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(o => 
@@ -82,7 +76,6 @@ export default function AdminOrders() {
         o.address?.phone?.includes(term)
       );
     }
-
     setFilteredOrders(result);
   };
 
@@ -91,7 +84,6 @@ export default function AdminOrders() {
       setReasonModal({ isOpen: true, orderId, nextStatus });
       return;
     }
-    
     await updateStatusRequest(orderId, nextStatus);
   };
 
@@ -101,7 +93,6 @@ export default function AdminOrders() {
         orderStatus: nextStatus,
         reason: reason 
       });
-      
       if (res.data.success) {
         setOrders(prev => prev.map(o => o._id === orderId ? { ...o, orderStatus: nextStatus } : o));
         setReasonModal({ isOpen: false, orderId: null, nextStatus: null });
@@ -128,7 +119,10 @@ export default function AdminOrders() {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="animate-spin text-amber-600" size={48} />
+          <div className="text-center">
+            <Loader2 className="animate-spin text-amber-600 mx-auto mb-4" size={48} />
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Retrieving Transactions</p>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -136,71 +130,85 @@ export default function AdminOrders() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
         <div>
-          <h1 className="text-4xl font-playfair font-bold text-slate-900">Manage Orders</h1>
-          <p className="text-slate-500 mt-2">Filter, track, and update all customer orders.</p>
+          <div className="flex items-center gap-2 text-amber-600 font-bold text-xs uppercase tracking-widest mb-2">
+            <ShoppingBag size={14} /> Order Fulfillment
+          </div>
+          <h1 className="text-5xl font-playfair font-bold text-slate-900">Manage Orders</h1>
         </div>
-        <div className="flex gap-3">
-          <button onClick={fetchOrders} className="p-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-all">
+        <div className="flex gap-4">
+          <button 
+            onClick={fetchOrders} 
+            className="p-4 bg-white border border-slate-100 text-slate-400 rounded-2xl hover:text-amber-600 hover:bg-amber-50 hover:border-amber-100 transition-all shadow-sm"
+          >
             <RefreshCw size={20} />
           </button>
-          <button onClick={exportToCSV} className="flex items-center gap-2 px-6 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-            <Download size={20} /> Export CSV
+          <button 
+            onClick={exportToCSV} 
+            className="flex items-center gap-3 px-8 py-4 bg-slate-950 text-white font-bold rounded-[1.5rem] hover:bg-amber-500 hover:text-slate-950 transition-all shadow-xl shadow-slate-900/10 text-sm uppercase tracking-widest"
+          >
+            <Download size={20} /> Export Report
           </button>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+      <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="relative group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-500 transition-colors" size={20} />
           <input 
             type="text" 
-            placeholder="Search orders..." 
+            placeholder="Search ID or Phone..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none"
+            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-50 rounded-2xl focus:ring-4 focus:ring-amber-500/10 focus:bg-white outline-none transition-all font-medium text-slate-900"
           />
         </div>
         
-        <select 
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-bold text-slate-600"
-        >
-          <option value="All">All Statuses</option>
-          {Object.keys(NEXT_STATUSES).map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <div className="relative">
+          <select 
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full pl-6 pr-12 py-4 bg-slate-50 border border-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-amber-500/10 focus:bg-white font-bold text-slate-600 appearance-none transition-all"
+          >
+            <option value="All">All Statuses</option>
+            {Object.keys(NEXT_STATUSES).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <Filter className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
+        </div>
 
-        <select 
-          value={filterPayment}
-          onChange={(e) => setFilterPayment(e.target.value)}
-          className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-bold text-slate-600"
-        >
-          <option value="All">All Payments</option>
-          <option value="Successful">Successful</option>
-          <option value="Pending">Pending</option>
-          <option value="Failed">Failed</option>
-        </select>
+        <div className="relative">
+          <select 
+            value={filterPayment}
+            onChange={(e) => setFilterPayment(e.target.value)}
+            className="w-full pl-6 pr-12 py-4 bg-slate-50 border border-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-amber-500/10 focus:bg-white font-bold text-slate-600 appearance-none transition-all"
+          >
+            <option value="All">All Payments</option>
+            <option value="Successful">Successful</option>
+            <option value="Pending">Pending</option>
+            <option value="Failed">Failed</option>
+          </select>
+          <Activity className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
+        </div>
 
-        <div className="flex items-center justify-center text-slate-400 text-sm font-bold">
-          {filteredOrders.length} orders found
+        <div className="flex items-center justify-center bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl border border-amber-100 px-6">
+          {filteredOrders.length} Orders Listed
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-separate border-spacing-0">
             <thead>
-              <tr className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
-                <th className="px-8 py-6">Order</th>
-                <th className="px-8 py-6">Customer</th>
-                <th className="px-8 py-6">Items</th>
-                <th className="px-8 py-6">Amount</th>
-                <th className="px-8 py-6">Payment</th>
-                <th className="px-8 py-6">Status</th>
-                <th className="px-8 py-6">Actions</th>
+              <tr className="bg-slate-50/50 text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">
+                <th className="px-10 py-8 border-b border-slate-50">Transaction ID</th>
+                <th className="px-10 py-8 border-b border-slate-50">Customer</th>
+                <th className="px-10 py-8 border-b border-slate-50">Menu Items</th>
+                <th className="px-10 py-8 border-b border-slate-50">Revenue</th>
+                <th className="px-10 py-8 border-b border-slate-50">Payment</th>
+                <th className="px-10 py-8 border-b border-slate-50">Flow Control</th>
+                <th className="px-10 py-8 border-b border-slate-50 text-right">View</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -208,51 +216,51 @@ export default function AdminOrders() {
                 const nextOptions = NEXT_STATUSES[order.orderStatus] || [];
                 
                 return (
-                  <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <span className="font-mono text-slate-400 text-xs">{truncateId(order._id)}</span>
-                        <span className="text-[10px] text-slate-300 font-black mt-1 uppercase">{formatDate(order.createdAt)}</span>
-                      </div>
+                  <tr key={order._id} className="group hover:bg-slate-50/50 transition-all duration-300">
+                    <td className="px-10 py-8">
+                      <span className="font-mono text-slate-400 text-[11px] block">{truncateId(order._id)}</span>
+                      <span className="text-[10px] text-slate-300 font-black mt-1.5 uppercase tracking-wider">{formatDate(order.createdAt)}</span>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900">{order.userId?.name || 'Unknown'}</span>
-                        <span className="text-xs text-slate-400">{order.address?.phone || 'No Phone'}</span>
-                      </div>
+                    <td className="px-10 py-8">
+                      <p className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors">{order.userId?.name || 'Guest User'}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase mt-1 tracking-widest">{order.address?.phone || 'No Contact'}</p>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-wrap gap-1">
+                    <td className="px-10 py-8">
+                      <div className="flex flex-wrap gap-2">
                         {order.products?.map((p, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-500 whitespace-nowrap">
-                            {p.title} x{p.quantity}
+                          <span key={i} className="px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-500 shadow-sm">
+                            {p.title} <span className="text-amber-500">×{p.quantity}</span>
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td className="px-8 py-6 font-bold text-slate-900">{formatCurrency(order.totalAmount)}</td>
-                    <td className="px-8 py-6">
+                    <td className="px-10 py-8 font-bold text-slate-900 text-lg">{formatCurrency(order.totalAmount)}</td>
+                    <td className="px-10 py-8">
                       <StatusBadge type="payment" status={order.paymentStatus} />
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-10 py-8">
                       {nextOptions.length > 0 ? (
-                        <select 
-                          value={order.orderStatus}
-                          onChange={(e) => handleStatusChange(order._id, order.orderStatus, e.target.value)}
-                          className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                        >
-                          <option value={order.orderStatus}>{order.orderStatus}</option>
-                          {nextOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
+                        <div className="relative inline-block w-full max-w-[140px]">
+                          <select 
+                            value={order.orderStatus}
+                            onChange={(e) => handleStatusChange(order._id, order.orderStatus, e.target.value)}
+                            className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-amber-500/10 cursor-pointer shadow-sm appearance-none hover:border-amber-500 transition-all"
+                          >
+                            <option value={order.orderStatus}>{order.orderStatus}</option>
+                            {nextOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                          <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 rotate-90 pointer-events-none" size={14} />
+                        </div>
                       ) : (
-                        <span className="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                          Final: {order.orderStatus}
-                        </span>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-950 text-white rounded-xl text-[9px] font-black uppercase tracking-widest">
+                          <div className="w-1 h-1 bg-amber-500 rounded-full" />
+                          {order.orderStatus}
+                        </div>
                       )}
                     </td>
-                    <td className="px-8 py-6">
-                      <Link to={`/admin/orders/${order._id}`} className="p-3 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all inline-block">
-                        <Eye size={20} />
+                    <td className="px-10 py-8 text-right">
+                      <Link to={`/admin/orders/${order._id}`} className="p-4 text-slate-300 hover:text-amber-600 hover:bg-amber-50 rounded-2xl transition-all inline-block group/view">
+                        <Eye size={22} className="group-hover/view:scale-110 transition-transform" />
                       </Link>
                     </td>
                   </tr>
@@ -265,7 +273,7 @@ export default function AdminOrders() {
 
       <ReasonModal 
         isOpen={reasonModal.isOpen}
-        title={`Reason for ${reasonModal.nextStatus}`}
+        title={`Action: ${reasonModal.nextStatus}`}
         onConfirm={(reason) => updateStatusRequest(reasonModal.orderId, reasonModal.nextStatus, reason)}
         onCancel={() => setReasonModal({ isOpen: false, orderId: null, nextStatus: null })}
       />

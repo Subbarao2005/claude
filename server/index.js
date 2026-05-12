@@ -18,42 +18,15 @@ const PORT = process.env.PORT || 5000;
 app.set('trust proxy', 1);
 
 // ─── SECURITY HEADERS (RAZORPAY COMPLIANT) ──────────────────────────────────
+// ─── SECURITY HEADERS (RAZORPAY COMPLIANT) ──────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
-      frameSrc: ["'self'", "https://api.razorpay.com", "https://tds.razorpay.com"],
-      imgSrc: ["'self'", "data:", "https://*.razorpay.com"],
-      connectSrc: ["'self'", "https://api.razorpay.com", "https://lumberjack.razorpay.com"],
-    },
-  },
+  contentSecurityPolicy: false, // Disable CSP temporarily to debug connectivity
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // ─── CORS CONFIGURATION ──────────────────────────────────────────────────────
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://claude-pi-lovat.vercel.app',
-  'https://claude-l4uq3x6m2-subbarao-s-projects.vercel.app'
-];
-
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    const isAllowed = allowedOrigins.includes(origin) || 
-                     origin.endsWith('.vercel.app') || 
-                     origin.includes('localhost');
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.error(`CORS blocked for origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins temporarily for debugging
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']

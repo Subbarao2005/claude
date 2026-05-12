@@ -1,173 +1,96 @@
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
-const generateToken = require('../utils/generateToken');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-// ─── POST /api/auth/register ─────────────────────────────────────────────────
+// Helper to generate JWT
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
+};
+
 const registerUser = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, password } = req.body;
+    const userExists = await User.findOne({ email });
 
-    // Field validation
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields are required.'
-      });
+    if (userExists) {
+      return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
-    // Check for duplicate email
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already registered.'
-      });
-    }
-
-    // Hash password with 12 rounds
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user
-    const newUser = await User.create({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      phone,
-      password: hashedPassword,
-      role: 'user',
-    });
-
-    // Fetch user without password
-    const user = await User.findById(newUser._id).select('-password');
-
-    // Generate JWT with minimal payload
-    const token = generateToken({ id: user._id, role: user.role });
+    const user = await User.create({ name, email, password });
 
     return res.status(201).json({
       success: true,
-      message: 'Registration successful',
-      token,
-      user
+      token: generateToken(user._id),
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
-    console.error('Registration error:', error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── POST /api/auth/login ────────────────────────────────────────────────────
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const user = await User.findOne({ email });
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password required'
+    if (user && (await user.comparePassword(password))) {
+      return res.status(200).json({
+        success: true,
+        token: generateToken(user._id),
+        user: { id: user._id, name: user.name, email: user.email, role: user.role }
       });
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
-
-    // Find user and include password for comparison
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Generate JWT
-    const token = generateToken({ id: user._id, role: user.role });
-
-    // Clean user object
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    return res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      token,
-      user: userResponse
-    });
   } catch (error) {
-    console.error('Login error:', error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── POST /api/auth/admin/login ──────────────────────────────────────────────
 const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const admin = await Admin.findOne({ email });
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password required'
+    if (admin && (await bcrypt.compare(password, admin.password))) {
+      return res.status(200).json({
+        success: true,
+        token: generateToken(admin._id),
+        user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' }
       });
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid admin credentials' });
     }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-    // Find admin and include password
-    const admin = await Admin.findOne({ email: email.toLowerCase().trim() }).select('+password');
-    if (!admin) {
-      return res.status(401).json({
-        success: false,
-        message: `Admin account (${email}) not found in database`
-      });
-    }
-
-    // Verify role
-    if (admin.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Password incorrect for this admin account'
-      });
-    }
-
-    // Generate JWT
-    const token = generateToken({ id: admin._id, role: admin.role });
-
-    // Clean admin object
-    const adminResponse = admin.toObject();
-    delete adminResponse.password;
-
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({ role: 'user' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
     return res.status(200).json({
       success: true,
-      message: 'Admin login successful',
-      token,
-      admin: adminResponse
+      users,
+      count: users.length
     });
-  } catch (error) {
-    console.error('Admin login error:', error.message);
+  } catch (err) {
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: err.message
     });
   }
 };
 
-module.exports = { registerUser, loginUser, loginAdmin };
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  loginAdmin,
+  getAllUsers
+};

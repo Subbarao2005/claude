@@ -1,60 +1,51 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { 
-  ArrowLeft, 
-  Package, 
+  formatCurrency, 
+  formatDate, 
+  truncateId, 
+  getStatusColor, 
+  getPaymentStatusColor 
+} from '../../utils/helpers';
+import { 
+  Loader2, 
+  ChevronLeft, 
   User, 
   MapPin, 
-  Clock, 
-  Truck, 
-  CheckCircle2, 
-  AlertCircle,
-  Loader2,
-  Mail,
-  Phone
+  Package, 
+  Mail, 
+  Phone 
 } from 'lucide-react';
 
 export default function AdminOrderDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const res = await api.get(`/orders/${id}`);
-        if (res.data.success) {
-          setOrder(res.data.order);
-        }
-      } catch (err) {
-        console.error('Failed to fetch order detail:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchOrder();
   }, [id]);
 
-  const updateStatus = async (newStatus) => {
+  const fetchOrder = async () => {
     try {
-      setUpdating(true);
-      const res = await api.put(`/orders/admin/${id}/status`, { status: newStatus });
+      setLoading(true);
+      const res = await api.get(`/orders/${id}`);
       if (res.data.success) {
         setOrder(res.data.order);
       }
     } catch (err) {
-      alert('Failed to update status');
+      console.error('Fetch order error:', err);
+      setError('Failed to load order details');
     } finally {
-      setUpdating(false);
+      setLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-40">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="animate-spin text-amber-600" size={48} />
       </div>
     );
@@ -62,146 +53,111 @@ export default function AdminOrderDetail() {
 
   if (!order) {
     return (
-      <div className="p-8 text-center py-20">
-        <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold">Order not found</h2>
-        <button onClick={() => navigate('/admin/orders')} className="mt-4 text-amber-600 font-bold">Back to Orders</button>
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-playfair font-bold text-slate-900">Order not found</h2>
+        <Link to="/admin/orders" className="text-amber-600 font-bold mt-4 inline-block underline">Back to Orders</Link>
       </div>
     );
   }
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
-      <button 
-        onClick={() => navigate('/admin/orders')}
-        className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition-colors mb-8"
-      >
-        <ArrowLeft size={20} />
-        Back to Orders
-      </button>
+      <Link to="/admin/orders" className="flex items-center gap-2 text-slate-400 hover:text-amber-600 font-bold mb-8 transition-colors group">
+        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Back to Orders
+      </Link>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Main Content */}
-        <div className="flex-grow space-y-8">
-          {/* Order Status Card */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-3xl font-playfair font-bold text-slate-900">Order #{order._id.slice(-8).toUpperCase()}</h1>
-                <p className="text-slate-500 mt-1 flex items-center gap-2">
-                  <Clock size={16} />
-                  Placed on {new Date(order.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {['pending', 'processing', 'shipped', 'delivered'].map((s) => (
-                  <button
-                    key={s}
-                    disabled={updating || order.status === s}
-                    onClick={() => updateStatus(s)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                      order.status === s 
-                        ? 'bg-amber-600 text-white shadow-lg shadow-amber-100' 
-                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
-                    }`}
-                  >
-                    {s.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
+        <div>
+          <h1 className="text-4xl font-playfair font-bold text-slate-900">Order {truncateId(order._id)}</h1>
+          <p className="text-slate-500 mt-2 tracking-widest uppercase text-xs font-bold">{formatDate(order.createdAt)}</p>
+        </div>
+        <div className="flex gap-4">
+          <span className={`px-6 py-2 rounded-2xl text-sm font-bold shadow-sm ${getPaymentStatusColor(order.paymentStatus)}`}>
+            {(order.paymentStatus || 'pending').toUpperCase()}
+          </span>
+          <span className={`px-6 py-2 rounded-2xl text-sm font-bold shadow-sm ${getStatusColor(order.orderStatus)}`}>
+            {(order.orderStatus || 'Pending').toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Items Card */}
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-8 flex items-center gap-3">
+              <Package className="text-amber-600" size={24} /> Ordered Items
+            </h3>
+            <div className="space-y-6">
+              {order.products?.map((item, i) => (
+                <div key={i} className="flex justify-between items-center pb-6 border-b border-slate-50 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-amber-600 font-playfair text-2xl font-bold">
+                      {(item?.title || 'I').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900">{(item?.title || 'Unknown Item').toUpperCase()}</h4>
+                      <p className="text-sm text-slate-400">Qty: {item?.quantity || 1} @ {formatCurrency(item?.price || 0)} each</p>
+                    </div>
+                  </div>
+                  <p className="font-bold text-slate-900">{formatCurrency((item?.price || 0) * (item?.quantity || 1))}</p>
+                </div>
+              ))}
             </div>
-
-            {/* Items Table */}
-            <div className="border border-slate-100 rounded-3xl overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left font-bold text-slate-700">Item</th>
-                    <th className="px-6 py-4 text-center font-bold text-slate-700">Qty</th>
-                    <th className="px-6 py-4 text-right font-bold text-slate-700">Price</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {order.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="px-6 py-4 flex items-center gap-4">
-                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-                          {item.product?.image ? (
-                            <img src={item.product.image} className="w-full h-full object-cover rounded-xl" />
-                          ) : (
-                            <Package size={20} className="text-slate-300" />
-                          )}
-                        </div>
-                        <span className="font-bold text-slate-900">{item.product?.title || 'Unknown Product'}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center font-bold text-slate-600">{item.quantity}</td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-900">₹{item.price * item.quantity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-slate-100 flex justify-end">
-              <div className="w-64 space-y-3">
-                <div className="flex justify-between text-slate-500">
-                  <span>Subtotal</span>
-                  <span>₹{order.totalAmount}</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>Delivery</span>
-                  <span className="text-emerald-600 font-bold">FREE</span>
-                </div>
-                <div className="flex justify-between text-2xl font-playfair font-bold text-slate-900 pt-3 border-t border-slate-100">
-                  <span>Total</span>
-                  <span>₹{order.totalAmount}</span>
-                </div>
+            <div className="mt-10 pt-8 border-t border-slate-50">
+              <div className="flex justify-between items-center text-2xl font-bold text-slate-900">
+                <span>Total Amount</span>
+                <span className="text-amber-600">{formatCurrency(order.totalAmount || 0)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="lg:w-96 space-y-8">
-          {/* Customer Info */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <User size={20} className="text-amber-600" />
-              Customer
+        <div className="space-y-8">
+          {/* Customer Info Card */}
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-8 flex items-center gap-3">
+              <User className="text-amber-600" size={24} /> Customer Information
             </h3>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <User size={18} className="text-slate-400" />
-                </div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-slate-50 rounded-xl text-slate-400"><User size={18} /></div>
                 <div>
-                  <p className="font-bold text-slate-900">{order.user?.name || 'Guest'}</p>
-                  <p className="text-xs text-slate-500">User ID: #{order.user?._id?.slice(-6).toUpperCase()}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Full Name</p>
+                  <p className="font-bold text-slate-900">{order.userId?.name || 'Unknown User'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Mail size={18} className="text-slate-400" />
+                <div className="p-3 bg-slate-50 rounded-xl text-slate-400"><Mail size={18} /></div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Email Address</p>
+                  <p className="font-bold text-slate-900">{order.userId?.email || 'N/A'}</p>
                 </div>
-                <p className="text-sm font-medium text-slate-600 truncate">{order.user?.email}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Phone size={18} className="text-slate-400" />
-                </div>
-                <p className="text-sm font-medium text-slate-600">{order.user?.phone || 'No phone'}</p>
               </div>
             </div>
           </div>
 
-          {/* Shipping Address */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <MapPin size={20} className="text-amber-600" />
-              Shipping
+          {/* Shipping Info Card */}
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+            <h3 className="text-xl font-playfair font-bold text-slate-900 mb-8 flex items-center gap-3">
+              <MapPin className="text-amber-600" size={24} /> Delivery Address
             </h3>
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-slate-600 text-sm leading-relaxed font-medium">
-              {order.shippingAddress || 'Store Pickup'}
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-slate-50 rounded-xl text-slate-400"><MapPin size={18} /></div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Street Address</p>
+                  <p className="font-bold text-slate-900 leading-relaxed">{order.address?.street || 'N/A'}</p>
+                  <p className="font-bold text-slate-900 mt-1">{order.address?.city || 'N/A'}, {order.address?.pincode || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-slate-50 rounded-xl text-slate-400"><Phone size={18} /></div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</p>
+                  <p className="font-bold text-slate-900">{order.address?.phone || 'N/A'}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

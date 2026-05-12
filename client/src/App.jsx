@@ -8,7 +8,6 @@ import Navbar from './components/Navbar';
 import CartSidebar from './components/CartSidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
-import AdminLayout from './components/AdminLayout';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -19,10 +18,12 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
-import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import AdminProducts from './pages/admin/AdminProducts';
+import AdminCustomers from './pages/admin/AdminCustomers';
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -34,7 +35,7 @@ export default function App() {
           <div className="min-h-screen bg-gray-50">
             <Navbar onCartOpen={() => setIsCartOpen(true)} />
             
-            <main className="pt-20"> {/* Padding for sticky navbar */}
+            <main>
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
@@ -49,19 +50,12 @@ export default function App() {
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderTrackingPage /></ProtectedRoute>} />
 
                 {/* Admin Routes */}
-                <Route path="/admin/login" element={<AdminLoginPage />} />
-                <Route path="/admin/*" element={
-                  <AdminRoute>
-                    <AdminLayout>
-                      <Routes>
-                        <Route path="dashboard" element={<AdminDashboard />} />
-                        <Route path="orders" element={<AdminOrders />} />
-                        <Route path="products" element={<AdminProducts />} />
-                        <Route path="*" element={<Navigate to="dashboard" replace />} />
-                      </Routes>
-                    </AdminLayout>
-                  </AdminRoute>
-                } />
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+                <Route path="/admin/orders/:id" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
+                <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+                <Route path="/admin/customers" element={<AdminRoute><AdminCustomers /></AdminRoute>} />
 
                 {/* Catch All */}
                 <Route path="*" element={<Navigate to="/" replace />} />

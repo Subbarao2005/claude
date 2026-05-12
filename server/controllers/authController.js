@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Admin = require('../models/Admin');
+const Order = require('../models/Order');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
@@ -75,16 +76,36 @@ const getAllUsers = async (req, res) => {
       .select('-password')
       .sort({ createdAt: -1 });
     
-    return res.status(200).json({
-      success: true,
-      users,
-      count: users.length
-    });
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const orderCount = await Order.countDocuments({ userId: user._id });
+        const totalSpentResult = await Order.aggregate([
+          { $match: { userId: user._id, paymentStatus: 'successful' } },
+          { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        ]);
+        return {
+          ...user.toObject(),
+          orderCount,
+          totalSpent: totalSpentResult[0]?.total || 0
+        };
+      })
+    );
+
+    return res.status(200).json({ success: true, users: usersWithStats, count: usersWithStats.length });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const getUserOrderHistory = async (req, res) => {
+  try {
+    const orders = await Order.find({ userId: req.params.userId })
+      .populate('userId', 'name email phone')
+      .sort({ createdAt: -1 });
+    
+    return res.status(200).json({ success: true, orders, count: orders.length });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -92,5 +113,6 @@ module.exports = {
   registerUser, 
   loginUser, 
   loginAdmin,
-  getAllUsers
+  getAllUsers,
+  getUserOrderHistory
 };

@@ -8,7 +8,6 @@ import {
   Eye, 
   EyeOff, 
   ShieldCheck,
-  ChevronRight,
   ArrowRight
 } from 'lucide-react';
 
@@ -17,7 +16,7 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { loginAdmin } = useAuth();
+  const { adminLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -26,17 +25,15 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const res = await loginAdmin(formData.email, formData.formData); // Wait, loginAdmin from context
-      // Note: My auth context loginAdmin should handle this. 
-      // Let's check the context call. usually it takes email, password.
-      const success = await loginAdmin(formData.email, formData.password);
-      if (success) {
+      const result = await adminLogin(formData.email, formData.password);
+      
+      if (result.success) {
         navigate('/admin/dashboard');
       } else {
-        setError('Invalid admin credentials. Please check your email and password.');
+        setError(result.message || 'Invalid admin credentials.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError('Login failed. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -44,13 +41,12 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Abstract Background Accents */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" />
 
       <div className="w-full max-w-md z-10">
         <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center text-slate-950 font-playfair text-4xl font-black mx-auto mb-6 shadow-2xl shadow-amber-500/20 animate-bounce-subtle">
+          <div className="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center text-slate-950 font-playfair text-4xl font-black mx-auto mb-6 shadow-2xl shadow-amber-500/20">
             M
           </div>
           <h1 className="text-3xl font-playfair font-bold text-white mb-2">Melcho Admin</h1>
@@ -70,13 +66,13 @@ export default function AdminLogin() {
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Admin Email</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 transition-colors group-focus-within:text-amber-500" size={20} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-amber-500" size={20} />
                 <input 
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-950/50 border border-slate-800 text-white rounded-2xl outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all font-medium"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-950/50 border border-slate-800 text-white rounded-2xl outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
                   placeholder="admin@melcho.com"
                 />
               </div>
@@ -85,19 +81,19 @@ export default function AdminLogin() {
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Password</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 transition-colors group-focus-within:text-amber-500" size={20} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-amber-500" size={20} />
                 <input 
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full pl-12 pr-12 py-4 bg-slate-950/50 border border-slate-800 text-white rounded-2xl outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all font-medium"
+                  className="w-full pl-12 pr-12 py-4 bg-slate-950/50 border border-slate-800 text-white rounded-2xl outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
                   placeholder="••••••••"
                 />
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -107,15 +103,9 @@ export default function AdminLogin() {
             <button 
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-amber-500 text-slate-950 font-black text-lg rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 group shadow-xl shadow-amber-500/20 disabled:opacity-50"
+              className="w-full py-5 bg-amber-500 text-slate-950 font-black text-lg rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
             >
-              {loading ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : (
-                <>
-                  Authenticate <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
-                </>
-              )}
+              {loading ? <Loader2 className="animate-spin" size={24} /> : <>Authenticate <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" /></>}
             </button>
           </form>
         </div>

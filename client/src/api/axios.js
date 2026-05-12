@@ -8,6 +8,8 @@ const api = axios.create({
   },
 });
 
+console.log('📡 API Base URL:', api.defaults.baseURL);
+
 // Request interceptor to attach token
 api.interceptors.request.use(
   (config) => {

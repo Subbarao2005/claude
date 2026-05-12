@@ -145,6 +145,22 @@ app.get('/api/admin-setup-emergency', async (req, res) => {
   }
 });
 
+app.get('/api/product-seed-emergency', async (req, res) => {
+  try {
+    const Product = require('./models/Product');
+    const products = [
+      { title: "Bubble Waffle With Triple Chocolate", price: 199, category: "Bubble Waffle", description: "Icecream with three types of chocolate", image: "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=400" },
+      { title: "Croissant With Lotus Biscoff", price: 199, category: "Croissants", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=400" },
+      { title: "Hot Chocolate", price: 99, category: "Melt-In Moments", image: "https://images.unsplash.com/photo-1544787210-2213d420436f?auto=format&fit=crop&q=80&w=400" }
+    ];
+    await Product.deleteMany({});
+    const result = await Product.insertMany(products);
+    res.status(201).json({ success: true, message: `Seeded ${result.length} products successfully!` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ─── DATABASE CONNECTION ──────────────────────────────────────────────────────
 const connectDB = require('./config/db');
 connectDB();

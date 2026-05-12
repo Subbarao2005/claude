@@ -7,10 +7,12 @@ const morgan = require('morgan');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 
 dotenv.config();
 
 const app = express();
+app.use(compression()); // Compress all responses
 const PORT = process.env.PORT || 5000;
 
 // ─── PRODUCTION PROXY HANDLING ──────────────────────────────────────────────

@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { formatCurrency } from '../utils/helpers';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle, Home, ShoppingBag, Clock } from 'lucide-react';
 
 export default function OrderSuccessPage() {
-  const { state } = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { orderId, amount } = location.state || {};
   const [countdown, setCountdown] = useState(10);
 
   useEffect(() => {
-    if (!state?.orderId) {
-      navigate('/menu');
+    if (!orderId) {
+      navigate('/');
       return;
     }
 
@@ -18,61 +18,57 @@ export default function OrderSuccessPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          navigate(`/orders/${state.orderId}`);
-          return 0;
+          navigate(`/orders/${orderId}`);
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [state, navigate]);
+  }, [orderId, navigate]);
 
-  if (!state?.orderId) return null;
+  if (!orderId) return null;
 
   return (
-    <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
-      <div className="bg-white max-w-lg w-full p-10 rounded-3xl shadow-xl text-center border border-amber-100">
-        <div className="flex justify-center mb-6">
-          <CheckCircle2 size={80} className="text-green-500 animate-bounce" />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-[3rem] p-10 shadow-xl border border-slate-100 text-center animate-in zoom-in duration-500">
+        <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-8 text-emerald-600">
+          <CheckCircle size={60} strokeWidth={1.5} />
         </div>
         
-        <h1 className="font-playfair text-3xl font-bold text-gray-900 mb-2">Order Placed Successfully!</h1>
-        <p className="text-gray-500 mb-8">Thank you for choosing Melcho. Your desserts are being prepared with love.</p>
+        <h1 className="text-3xl font-playfair font-bold text-slate-900 mb-2">Order Placed Successfully!</h1>
+        <p className="text-slate-500 mb-8">Thank you for your purchase. Your delicious treats are being prepared.</p>
         
-        <div className="bg-amber-50 p-6 rounded-2xl mb-8 border border-amber-100 text-left">
-          <div className="flex justify-between items-center border-b border-amber-200 pb-3 mb-3">
-            <span className="text-gray-500 text-sm">Order ID</span>
-            <span className="font-mono font-medium text-gray-900">{state.orderId}</span>
+        <div className="bg-slate-50 rounded-2xl p-6 mb-8 space-y-3 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400 font-medium">Order ID</span>
+            <span className="font-bold text-slate-900">#{orderId.slice(-8).toUpperCase()}</span>
           </div>
-          <div className="flex justify-between items-center border-b border-amber-200 pb-3 mb-3">
-            <span className="text-gray-500 text-sm">Items</span>
-            <span className="font-medium text-gray-900">{state.items}</span>
-          </div>
-          <div className="flex justify-between items-center pt-1">
-            <span className="text-gray-500 text-sm">Total Paid</span>
-            <span className="font-bold text-amber-700 text-lg">{formatCurrency(state.total)}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400 font-medium">Amount Paid</span>
+            <span className="font-bold text-amber-600 text-lg">₹{amount}</span>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Link 
-            to={`/orders/${state.orderId}`}
-            className="block w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition-colors"
+            to={`/orders/${orderId}`}
+            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all"
           >
-            Track My Order
+            Track My Order <ShoppingBag size={18} />
           </Link>
           <Link 
             to="/menu"
-            className="block w-full py-3 bg-white hover:bg-gray-50 text-amber-600 border border-amber-200 rounded-xl font-bold transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-white text-slate-900 border border-slate-200 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all"
           >
-            Back to Menu
+            Back to Menu <Home size={18} />
           </Link>
         </div>
 
-        <p className="text-sm text-gray-400 mt-6">
-          Redirecting to tracking page in {countdown}s...
-        </p>
+        <div className="mt-8 flex items-center justify-center gap-2 text-slate-400 text-xs font-medium">
+          <Clock size={14} />
+          <span>Redirecting in {countdown} seconds</span>
+        </div>
       </div>
     </div>
   );

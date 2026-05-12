@@ -5,7 +5,7 @@ import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Sparkles } from 'lucid
 import { formatCurrency } from '../utils/helpers';
 
 export default function CartSidebar({ isOpen, onClose }) {
-  const { cart, updateQuantity, removeFromCart, cartTotal } = useCart();
+  const { items, updateQuantity, removeFromCart, cartTotal, cartCount } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -19,8 +19,6 @@ export default function CartSidebar({ isOpen, onClose }) {
   };
 
   if (!isOpen) return null;
-
-  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-end overflow-hidden">
@@ -55,7 +53,7 @@ export default function CartSidebar({ isOpen, onClose }) {
 
         {/* Items List */}
         <div className="flex-grow overflow-y-auto p-10 space-y-10 no-scrollbar">
-          {cart.length === 0 ? (
+          {items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
               <div className="w-32 h-32 bg-slate-50 rounded-[3rem] flex items-center justify-center mb-10 group">
                 <ShoppingBag size={48} className="text-slate-200 group-hover:text-amber-500 transition-colors duration-500" />
@@ -70,14 +68,14 @@ export default function CartSidebar({ isOpen, onClose }) {
               </button>
             </div>
           ) : (
-            cart.map((item) => (
+            items.map((item) => (
               <div key={item._id} className="flex gap-6 group animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <div className="w-24 h-24 bg-slate-50 rounded-[2rem] overflow-hidden flex-shrink-0 border border-slate-50">
-                  <img src={item.image || "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=400"} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <img src={item.product.image || "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=400"} alt={item.product.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                 </div>
                 <div className="flex-grow flex flex-col justify-center">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-slate-950 text-lg leading-tight group-hover:text-amber-600 transition-colors">{item.title}</h4>
+                    <h4 className="font-bold text-slate-950 text-lg leading-tight group-hover:text-amber-600 transition-colors">{item.product.title}</h4>
                     <button 
                       onClick={() => removeFromCart(item._id)}
                       className="p-2 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
@@ -103,7 +101,7 @@ export default function CartSidebar({ isOpen, onClose }) {
                         <Plus size={14} />
                       </button>
                     </div>
-                    <span className="text-lg font-bold text-slate-950">{formatCurrency(item.price * item.quantity)}</span>
+                    <span className="text-lg font-bold text-slate-950">{formatCurrency(item.product.price * item.quantity)}</span>
                   </div>
                 </div>
               </div>
@@ -112,7 +110,7 @@ export default function CartSidebar({ isOpen, onClose }) {
         </div>
 
         {/* Footer */}
-        {cart.length > 0 && (
+        {items.length > 0 && (
           <div className="p-10 bg-slate-50 border-t border-slate-100 rounded-t-[3rem] space-y-8">
             <div className="space-y-4">
               <div className="flex justify-between items-center text-slate-400 text-xs font-black uppercase tracking-widest">

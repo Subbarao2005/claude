@@ -14,7 +14,7 @@ import { useCart } from '../context/CartContext';
 
 export default function Navbar({ onCartOpen }) {
   const { user, isAuthenticated, logout } = useAuth();
-  const { cart } = useCart();
+  const { items, cartCount } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -24,8 +24,6 @@ export default function Navbar({ onCartOpen }) {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   const navLinks = [
     { name: 'Home', path: '/' },

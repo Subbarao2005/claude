@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '../components/ProductCard';
 import api from '../api/axios';
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw, Filter, UtensilsCrossed, Loader2, Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export default function MenuPage() {
   const [products, setProducts] = useState([]);
@@ -9,6 +10,13 @@ export default function MenuPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const query = new URLSearchParams(useLocation().search);
+  const initialCat = query.get('category');
+
+  useEffect(() => {
+    if (initialCat) setSelectedCategory(initialCat);
+  }, [initialCat]);
 
   const fetchProducts = async () => {
     try {
@@ -44,69 +52,82 @@ export default function MenuPage() {
   }, [products, search, selectedCategory]);
 
   return (
-    <div className="min-h-screen bg-amber-50/30 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-playfair font-bold text-gray-900 mb-4">Indulge in Melcho</h1>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">Discover our handcrafted collection of premium desserts, waffles, and treats.</p>
+    <div className="min-h-screen bg-[#FDFCFB] pt-32 pb-24">
+      <div className="max-w-7xl mx-auto px-8 lg:px-12">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between items-end gap-10 mb-20">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-3 text-amber-600 font-bold text-xs uppercase tracking-[0.3em] mb-4">
+              <Sparkles size={16} /> Curated Collections
+            </div>
+            <h1 className="text-6xl lg:text-8xl font-playfair font-black text-slate-950 leading-[0.9]">
+              The Dessert <br /><span className="text-amber-500 italic">Catalog</span>
+            </h1>
+          </div>
+          <div className="relative w-full lg:w-96 group">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-500 transition-colors" size={20} />
+            <input
+              type="text"
+              placeholder="What are you craving?"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-16 pr-6 py-5 bg-white border border-slate-100 rounded-[2rem] outline-none focus:ring-4 focus:ring-amber-500/10 shadow-xl shadow-slate-200/20 transition-all font-medium text-slate-900"
+            />
+          </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex flex-col md:flex-row gap-6 justify-between items-center mb-12">
-          <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+        {/* Category Filter */}
+        <div className="flex items-center gap-6 mb-16 overflow-x-auto pb-4 no-scrollbar">
+          <div className="p-3 bg-slate-900 text-white rounded-2xl">
+            <Filter size={20} />
+          </div>
+          <div className="flex gap-3">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-6 py-2 rounded-full font-medium transition-all ${
+                className={`whitespace-nowrap px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all duration-300 ${
                   selectedCategory === cat 
-                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-200' 
-                    : 'bg-white text-gray-600 hover:bg-amber-100 border border-amber-200'
+                    ? 'bg-amber-500 text-slate-950 shadow-xl shadow-amber-500/20' 
+                    : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-50'
                 }`}
               >
                 {cat}
               </button>
             ))}
           </div>
-
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search desserts..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-amber-200 rounded-full outline-none focus:ring-2 focus:ring-amber-500 shadow-sm transition-all"
-            />
-          </div>
         </div>
 
-        {/* Content */}
+        {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
             {[1, 2, 3, 4, 5, 6].map(n => (
-              <div key={n} className="bg-white rounded-3xl h-[450px] animate-pulse border border-amber-100"></div>
+              <div key={n} className="bg-white rounded-[3rem] h-[500px] animate-pulse border border-slate-50 shadow-sm"></div>
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-red-100 shadow-sm">
-            <p className="text-red-500 text-xl font-medium mb-6">{error}</p>
+          <div className="text-center py-32 bg-white rounded-[4rem] border border-red-50/50 shadow-2xl shadow-slate-100 flex flex-col items-center">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-8">
+              <RotateCcw size={40} />
+            </div>
+            <p className="text-slate-900 text-2xl font-playfair font-bold mb-8">{error}</p>
             <button 
               onClick={fetchProducts}
-              className="flex items-center gap-2 mx-auto bg-amber-600 text-white px-8 py-3 rounded-full hover:bg-amber-700 transition-all font-bold"
+              className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 rounded-[2rem] hover:bg-amber-500 hover:text-slate-950 transition-all duration-500 font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/10"
             >
-              <RotateCcw size={20} />
-              Retry
+              Retry Connection
             </button>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-amber-100 shadow-sm">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">No desserts found</h3>
-            <p className="text-gray-500">Try adjusting your search or category filters.</p>
+          <div className="text-center py-32 bg-white rounded-[4rem] border border-slate-50 shadow-2xl shadow-slate-100">
+            <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mx-auto mb-8">
+              <UtensilsCrossed size={40} />
+            </div>
+            <h3 className="text-3xl font-playfair font-bold text-slate-950 mb-3">No desserts found</h3>
+            <p className="text-slate-400 font-medium">Try exploring a different category or search term.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
             {filteredProducts.map(product => (
               <ProductCard key={product._id} product={product} showAddToCart={true} />
             ))}

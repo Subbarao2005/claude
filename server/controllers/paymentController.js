@@ -12,31 +12,40 @@ const razorpay = new Razorpay({
 exports.createRazorpayOrder = async (req, res) => {
   try {
     const { amount, orderId } = req.body;
+    console.log(`[PAYMENT_INIT] Processing order: ${orderId} for amount: ${amount}`);
 
     if (!amount || !orderId) {
       return res.status(400).json({ success: false, message: "Amount and orderId are required" });
     }
 
-    // Convert to Paise (Integer) - Use Math.round to prevent float issues
+    // 1. Convert to Paise (Integer) - Use Math.round to prevent float precision issues
     const amountInPaise = Math.round(Number(amount) * 100);
 
+    // 2. Razorpay Order Options with Metadata
     const options = {
       amount: amountInPaise,
       currency: "INR",
-      receipt: `rcpt_${orderId.slice(-6)}`,
-      payment_capture: 1
+      receipt: `rcpt_${orderId.slice(-8)}_${Date.now()}`,
+      notes: {
+        orderId: orderId,
+        platform: "Melcho Desserts"
+      }
     };
 
     const rzpOrder = await razorpay.orders.create(options);
+    console.log(`[RAZORPAY_ORDER_CREATED] RZP_ID: ${rzpOrder.id}`);
 
-    // Track payment initiation
-    await Payment.create({
-      orderId,
-      userId: req.user.id,
-      razorpayOrderId: rzpOrder.id,
-      amount: Number(amount),
-      status: "pending"
-    });
+    // 3. Track initiation in DB
+    await Payment.findOneAndUpdate(
+      { orderId },
+      {
+        userId: req.user.id,
+        razorpayOrderId: rzpOrder.id,
+        amount: Number(amount),
+        status: "pending"
+      },
+      { upsert: true, new: true }
+    );
 
     return res.status(200).json({
       success: true,
@@ -46,7 +55,7 @@ exports.createRazorpayOrder = async (req, res) => {
       keyId: process.env.RAZORPAY_KEY_ID
     });
   } catch (error) {
-    console.error("Razorpay Order Creation Error:", error);
+    console.error("[PAYMENT_ERROR] Order Creation Failed:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -55,39 +64,70 @@ exports.createRazorpayOrder = async (req, res) => {
 exports.verifyPayment = async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId } = req.body;
+    console.log(`[PAYMENT_VERIFY] Verifying Payment: ${razorpayPaymentId} for Order: ${orderId}`);
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !orderId) {
-      return res.status(400).json({ success: false, message: "Missing verification details" });
+      return res.status(400).json({ success: false, message: "Incomplete verification details" });
     }
 
+    // 1. Reconstruct Signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(body.toString())
       .digest("hex");
 
-    if (expectedSignature === razorpaySignature) {
-      // Update Payment Record
-      await Payment.findOneAndUpdate(
-        { razorpayOrderId },
-        { status: "successful", razorpayPaymentId, razorpaySignature }
-      );
+    const isAuthentic = expectedSignature === razorpaySignature;
 
-      // Update Order Status
-      await Order.findByIdAndUpdate(orderId, { 
-        paymentStatus: "successful",
-        status: "confirmed"
-      });
+    if (isAuthentic) {
+      console.log(`[PAYMENT_SUCCESS] Verification Passed for ${razorpayPaymentId}`);
 
-      return res.status(200).json({ success: true, message: "Payment verified successfully" });
+      // 2. Atomic Updates
+      await Promise.all([
+        Payment.findOneAndUpdate(
+          { razorpayOrderId },
+          { 
+            status: "successful", 
+            razorpayPaymentId, 
+            razorpaySignature,
+            updatedAt: Date.now()
+          }
+        ),
+        Order.findByIdAndUpdate(orderId, { 
+          paymentStatus: "successful",
+          status: "confirmed",
+          updatedAt: Date.now()
+        })
+      ]);
+
+      return res.status(200).json({ success: true, message: "Payment verified and order confirmed" });
     } else {
+      console.error(`[PAYMENT_FAILURE] Invalid Signature for Order: ${orderId}`);
       await Payment.findOneAndUpdate({ razorpayOrderId }, { status: "failed" });
-      await Order.findByIdAndUpdate(orderId, { paymentStatus: "failed" });
-      return res.status(400).json({ success: false, message: "Invalid payment signature" });
+      return res.status(400).json({ success: false, message: "Payment verification failed" });
     }
   } catch (error) {
-    console.error("Payment Verification Error:", error);
-    return res.status(500).json({ success: false, message: "Verification process failed" });
+    console.error("[PAYMENT_ERROR] Verification Exception:", error);
+    return res.status(500).json({ success: false, message: "Internal server error during verification" });
+  }
+};
+
+// POST /api/payment/failure
+exports.handlePaymentFailure = async (req, res) => {
+  try {
+    const { orderId, razorpayOrderId, errorData } = req.body;
+    console.warn(`[PAYMENT_DECLINED] Order: ${orderId} | Reason: ${errorData?.description || 'Unknown'}`);
+    
+    await Payment.findOneAndUpdate(
+      { razorpayOrderId: razorpayOrderId || { $exists: true } },
+      { status: "failed", notes: JSON.stringify(errorData) }
+    );
+    
+    await Order.findByIdAndUpdate(orderId, { paymentStatus: "failed" });
+    
+    res.status(200).json({ success: true, message: "Failure recorded" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -5,8 +5,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Helper to generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };
@@ -24,7 +24,7 @@ const registerUser = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.role),
       user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
@@ -40,7 +40,7 @@ const loginUser = async (req, res) => {
     if (user && (await user.comparePassword(password))) {
       return res.status(200).json({
         success: true,
-        token: generateToken(user._id),
+        token: generateToken(user._id, user.role),
         user: { id: user._id, name: user.name, email: user.email, role: user.role }
       });
     } else {
@@ -59,7 +59,7 @@ const loginAdmin = async (req, res) => {
     if (admin && (await bcrypt.compare(password, admin.password))) {
       return res.status(200).json({
         success: true,
-        token: generateToken(admin._id),
+        token: generateToken(admin._id, 'admin'),
         user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' }
       });
     } else {

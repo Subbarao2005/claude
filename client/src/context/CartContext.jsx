@@ -6,11 +6,19 @@ export const useCart = () => useContext(CartContext);
 
 const getSavedCart = () => {
   try {
-    const c = localStorage.getItem('melcho_cart');
-    if (!c || c === 'undefined' || c === 'null') 
+    const saved = localStorage.getItem('melcho_cart');
+    if (!saved || saved === 'undefined' || saved === 'null')
       return [];
-    const parsed = JSON.parse(c);
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(item =>
+      item &&
+      item.product &&
+      item.product._id &&
+      item.product.title &&
+      typeof item.quantity === 'number' &&
+      item.quantity > 0
+    );
   } catch {
     localStorage.removeItem('melcho_cart');
     return [];
@@ -29,19 +37,27 @@ export const CartProvider = ({ children }) => {
   }, [items]);
 
   const addToCart = (product) => {
+    if (!product || !product._id || !product.title) {
+      console.error('Invalid product:', product);
+      return;
+    }
+
     setItems((prev) => {
-      const existing = prev.find((item) => item._id === product._id);
+      const cleanPrev = (prev || []).filter(item => item && item.product);
+      const existing = cleanPrev.find((item) => item?.product?._id === product._id);
       if (existing) {
-        return prev.map((item) =>
-          item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+        return cleanPrev.map((item) =>
+          item?.product?._id === product._id
+            ? { ...item, quantity: (item.quantity || 0) + 1 }
+            : item
+        ).filter(Boolean);
       }
-      return [...prev, { product, quantity: 1, _id: product._id }];
+      return [...cleanPrev, { product, quantity: 1, _id: product._id }];
     });
   };
 
   const removeFromCart = (productId) => {
-    setItems((prev) => prev.filter((item) => item._id !== productId));
+    setItems((prev) => (prev || []).filter((item) => item && item.product && item.product._id !== productId));
   };
 
   const updateQuantity = (productId, quantity) => {
@@ -50,16 +66,25 @@ export const CartProvider = ({ children }) => {
       return;
     }
     setItems((prev) =>
-      prev.map((item) =>
-        item._id === productId ? { ...item, quantity } : item
-      )
+      (prev || [])
+        .filter(item => item && item.product)
+        .map((item) =>
+          item?.product?._id === productId ? { ...item, quantity } : item
+        )
     );
   };
 
   const clearCart = () => setItems([]);
 
-  const cartTotal = items.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+  const cartTotal = items.reduce((sum, item) => {
+    if (!item || !item.product) return sum;
+    return sum + ((item.product.price || 0) * (item.quantity || 0));
+  }, 0);
+
+  const cartCount = items.reduce((sum, item) => {
+    if (!item) return sum;
+    return sum + (item.quantity || 0);
+  }, 0);
 
   return (
     <CartContext.Provider

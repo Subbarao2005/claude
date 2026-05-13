@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { 
+  Package,
   ShoppingBag, 
   ChevronRight, 
   Clock, 
-  CheckCircle2, 
+  CheckCircle, 
   XCircle, 
   RotateCcw,
   Loader2,
@@ -26,7 +27,7 @@ export default function OrderHistoryPage() {
       setError('');
       const res = await api.get('/orders/my-orders');
       if (res.data.success) {
-        setOrders(res.data.orders);
+        setOrders(Array.isArray(res.data.orders) ? res.data.orders.filter(order => order && order._id) : []);
       }
     } catch (err) {
       setError('Failed to load your orders. Please check your connection.');
@@ -63,7 +64,7 @@ export default function OrderHistoryPage() {
               <p className="text-stone-500 font-medium">History of your sweet moments with Melcho.</p>
            </div>
            <div className="px-6 py-2 bg-primary-light text-primary font-black text-xs uppercase tracking-widest rounded-full border border-primary/10">
-              {orders.length} Total
+              {(orders || []).length} Total
            </div>
         </div>
 
@@ -80,7 +81,7 @@ export default function OrderHistoryPage() {
                 Retry Fetching
              </button>
           </div>
-        ) : orders.length === 0 ? (
+        ) : (orders || []).length === 0 ? (
           <div className="bg-white rounded-[4rem] p-24 text-center border border-stone-100 shadow-xl shadow-stone-200/20">
              <div className="w-32 h-32 bg-stone-50 text-stone-200 rounded-[3rem] flex items-center justify-center mx-auto mb-10">
                 <ShoppingBag size={56} />
@@ -96,7 +97,7 @@ export default function OrderHistoryPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {orders.map((order) => (
+            {(orders || []).filter(order => order && order._id).map((order) => (
               <Link 
                 key={order._id}
                 to={`/orders/${order._id}`}
@@ -118,14 +119,14 @@ export default function OrderHistoryPage() {
                     <div className="space-y-2">
                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest px-1">Items Ordered</p>
                        <div className="flex flex-wrap gap-2">
-                          {order.products.slice(0, 2).map((item, i) => (
+                          {(order?.products || []).filter(item => item && (item.title || item.product?.title)).slice(0, 2).map((item, i) => (
                              <span key={i} className="px-4 py-2 bg-stone-50 rounded-xl text-stone-600 text-xs font-bold border border-stone-50">
-                                {item.product.title} x{item.quantity}
+                                {item?.title || item?.product?.title || 'Item'} x{item?.quantity || 1}
                              </span>
                           ))}
-                          {order.products.length > 2 && (
+                          {(order?.products || []).filter(item => item).length > 2 && (
                              <span className="px-4 py-2 bg-primary-light text-primary rounded-xl text-[10px] font-black uppercase">
-                                +{order.products.length - 2} More
+                                +{(order?.products || []).filter(item => item).length - 2} More
                              </span>
                           )}
                        </div>
@@ -134,11 +135,11 @@ export default function OrderHistoryPage() {
 
                   {/* Right: Status & Total */}
                   <div className="flex flex-row md:flex-col justify-between items-end gap-4 min-w-[200px]">
-                     <StatusBadge status={order.orderStatus} />
+                     <StatusBadge status={order?.orderStatus || 'Pending'} />
                      
                      <div className="text-right space-y-1">
                         <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Grand Total</p>
-                        <p className="text-2xl font-bold text-primary">{formatCurrency(order.totalAmount)}</p>
+                        <p className="text-2xl font-bold text-primary">{formatCurrency(order?.totalAmount || 0)}</p>
                         <div className="flex items-center gap-2 text-stone-400 text-[10px] font-bold justify-end">
                            <CreditCard size={10} /> Paid via Razorpay
                         </div>
@@ -152,7 +153,7 @@ export default function OrderHistoryPage() {
 
                 <div className="mt-8 pt-6 border-t border-stone-50 flex justify-between items-center text-stone-400">
                    <div className="flex items-center gap-2 text-xs font-medium">
-                      <Calendar size={14} /> {formatDate(order.createdAt)}
+                      <Calendar size={14} /> {formatDate(order?.createdAt)}
                    </div>
                    <div className="flex items-center gap-2 text-xs font-medium">
                       <Clock size={14} /> Express Delivery

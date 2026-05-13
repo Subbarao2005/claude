@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Clock, MapPin, ShieldCheck, Star, ChevronRight } from 'lucide-react';
+import { ArrowRight, Star, Zap, Clock, ShoppingBag, ChevronRight, Sparkles } from 'lucide-react';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
 
@@ -31,19 +31,24 @@ export default function LandingPage() {
   ];
 
   useEffect(() => {
-    const fetchBestsellers = async () => {
+    const fetchFeatured = async () => {
       try {
         const res = await api.get('/products');
-        if (res.data.success) {
-          setFeaturedProducts(res.data.products.slice(0, 6));
+        if (res.data.success && Array.isArray(res.data.products)) {
+          const valid = res.data.products
+            .filter(p => p && p._id && p.title)
+            .slice(0, 6);
+          setFeaturedProducts(valid);
+        } else {
+          setFeaturedProducts([]);
         }
       } catch (err) {
-        console.error('Bestsellers fetch failed');
+        setFeaturedProducts([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchBestsellers();
+    fetchFeatured();
   }, []);
 
   return (
@@ -139,9 +144,11 @@ export default function LandingPage() {
                   <div key={i} className="h-96 bg-stone-100 animate-pulse rounded-3xl" />
                 ))
               ) : (
-                featuredProducts.map(product => (
-                  <ProductCard key={product._id} product={product} />
-                ))
+                featuredProducts
+                  .filter(p => p && p._id)
+                  .map(product => (
+                    <ProductCard key={product._id} product={product} showAddToCart={true} />
+                  ))
               )}
             </div>
           </div>

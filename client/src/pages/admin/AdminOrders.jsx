@@ -49,7 +49,7 @@ export default function AdminOrders() {
       
       const res = await api.get('/orders/admin/all');
       if (res.data.success) {
-        setOrders(res.data.orders);
+        setOrders(Array.isArray(res.data.orders) ? res.data.orders.filter(order => order && order._id) : []);
         setLastRefreshed(new Date());
       }
     } catch (err) {
@@ -67,9 +67,10 @@ export default function AdminOrders() {
   }, []);
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
+    return (orders || []).filter(order => {
+      if (!order || !order._id) return false;
       const matchesSearch = 
-        order._id.toLowerCase().includes(search.toLowerCase()) || 
+        (order._id || '').toLowerCase().includes(search.toLowerCase()) || 
         order.userId?.name?.toLowerCase().includes(search.toLowerCase()) ||
         order.shippingAddress?.phone?.includes(search);
       
@@ -181,7 +182,7 @@ export default function AdminOrders() {
          {/* Status Tabs */}
          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
             {STATUS_TABS.map(tab => {
-               const count = orders.filter(o => tab === 'All' || o.orderStatus === tab).length;
+               const count = (orders || []).filter(o => o && (tab === 'All' || o.orderStatus === tab)).length;
                const isActive = activeStatus === tab;
                return (
                   <button
@@ -221,7 +222,7 @@ export default function AdminOrders() {
                   </tr>
                </thead>
                <tbody className="divide-y divide-gray-50">
-                  {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+                  {filteredOrders.length > 0 ? filteredOrders.filter(order => order && order._id).map((order) => (
                     <tr key={order._id} className="group hover:bg-amber-50/30 transition-colors">
                        <td className="px-10 py-8">
                           <span className="font-mono text-amber-600 font-bold text-sm block">#{truncateId(order._id)}</span>
@@ -230,7 +231,7 @@ export default function AdminOrders() {
                           </span>
                        </td>
                        <td className="px-10 py-8">
-                          <p className="font-black text-slate-900 text-base">{order.shippingAddress?.name || 'Guest'}</p>
+                          <p className="font-black text-slate-900 text-base">{order.userId?.name || order.shippingAddress?.name || 'Unknown'}</p>
                           <p className="text-xs text-gray-400 font-bold mt-0.5 flex items-center gap-1.5 italic">
                              <Clock size={12} /> Ordered {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
@@ -238,24 +239,24 @@ export default function AdminOrders() {
                        <td className="px-10 py-8">
                           <div className="flex flex-wrap gap-1.5">
                              <span className="px-3 py-1 bg-gray-50 text-gray-600 text-[10px] font-bold rounded-lg border border-gray-100">
-                                {order.products?.[0]?.product?.title || 'Dessert'}
+                                {(order.products || []).filter(p => p)[0]?.title || (order.products || []).filter(p => p)[0]?.product?.title || 'Item'}
                              </span>
-                             {order.products?.length > 1 && (
+                             {(order.products || []).filter(p => p).length > 1 && (
                                 <span className="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg">
-                                   +{order.products.length - 1} More
+                                   +{(order.products || []).filter(p => p).length - 1} More
                                 </span>
                              )}
                           </div>
                        </td>
                        <td className="px-10 py-8">
-                          <p className="text-lg font-bold text-slate-950">{formatCurrency(order.totalAmount)}</p>
+                          <p className="text-lg font-bold text-slate-950">{formatCurrency(order?.totalAmount || 0)}</p>
                           <div className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest mt-1.5 ${order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
                              {order.paymentStatus === 'Paid' ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
-                             {order.paymentStatus}
+                             {order?.paymentStatus || 'Pending'}
                           </div>
                        </td>
                        <td className="px-10 py-8">
-                          <StatusBadge status={order.orderStatus} />
+                          <StatusBadge status={order?.orderStatus || 'Pending'} />
                        </td>
                        <td className="px-10 py-8 text-right">
                           <Link 
@@ -282,7 +283,7 @@ export default function AdminOrders() {
 
          {/* Mobile Cards */}
          <div className="lg:hidden p-6 space-y-6">
-            {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+            {filteredOrders.length > 0 ? filteredOrders.filter(order => order && order._id).map((order) => (
               <Link 
                 key={order._id}
                 to={`/admin/orders/${order._id}`}
@@ -297,15 +298,15 @@ export default function AdminOrders() {
                 </div>
                 <div className="space-y-4">
                    <div className="flex justify-between items-center">
-                      <p className="font-black text-slate-950 text-lg">{order.shippingAddress?.name || 'Guest'}</p>
-                      <p className="text-xl font-bold text-primary">{formatCurrency(order.totalAmount)}</p>
+                      <p className="font-black text-slate-950 text-lg">{order.userId?.name || order.shippingAddress?.name || 'Unknown'}</p>
+                      <p className="text-xl font-bold text-primary">{formatCurrency(order?.totalAmount || 0)}</p>
                    </div>
                    <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                         {order.products?.length || 0} Items
+                         {(order.products || []).filter(p => p).length || 0} Items
                       </p>
                       <div className={`text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                         Payment: {order.paymentStatus}
+                         Payment: {order?.paymentStatus || 'Pending'}
                       </div>
                    </div>
                 </div>

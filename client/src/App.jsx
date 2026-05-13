@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { Toaster } from 'react-hot-toast';
+import { clearCorruptedStorage } from './utils/helpers';
 
 // Components
 import Navbar from './components/Navbar';
@@ -25,6 +26,8 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminCustomers from './pages/admin/AdminCustomers';
+
+clearCorruptedStorage();
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);

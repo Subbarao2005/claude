@@ -52,3 +52,27 @@ export const formatDate = (dateString) => {
     return 'N/A';
   }
 };
+
+export const clearCorruptedStorage = () => {
+  try {
+    const cart = localStorage.getItem('melcho_cart');
+    if (cart) {
+      const parsed = JSON.parse(cart);
+      if (!Array.isArray(parsed)) {
+        localStorage.removeItem('melcho_cart');
+        return;
+      }
+      const clean = parsed.filter(item =>
+        item &&
+        item.product &&
+        item.product._id &&
+        item.product.title
+      );
+      if (clean.length !== parsed.length) {
+        localStorage.setItem('melcho_cart', JSON.stringify(clean));
+      }
+    }
+  } catch {
+    localStorage.removeItem('melcho_cart');
+  }
+};

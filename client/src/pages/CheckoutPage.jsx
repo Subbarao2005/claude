@@ -62,11 +62,11 @@ export default function CheckoutPage() {
     try {
       // 1. Create order on server
       const orderRes = await api.post('/orders', {
-        products: items.map(i => ({ 
-          product: i._id, 
-          quantity: i.quantity,
-          title: i.product.title,
-          price: i.product.price
+        products: (items || []).filter(i => i && i.product).map(i => ({ 
+          product: i?.product?._id, 
+          quantity: i?.quantity || 1,
+          title: i?.product?.title || 'Unknown Item',
+          price: i?.product?.price || 0
         })),
         totalAmount: cartTotal,
         shippingAddress: {
@@ -240,18 +240,18 @@ export default function CheckoutPage() {
               <h2 className="text-2xl font-playfair font-extrabold text-stone-900 border-b border-stone-50 pb-6">Order Summary</h2>
               
               <div className="space-y-6 max-h-64 overflow-y-auto pr-2 no-scrollbar">
-                {items.map((item) => (
-                  <div key={item._id} className="flex justify-between items-center group">
+                {(items || []).filter(item => item && item.product).map((item, index) => (
+                  <div key={item?.product?._id || `item-${index}`} className="flex justify-between items-center group">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-stone-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center text-xl">
-                        {item.product.image ? <img src={item.product.image} className="w-full h-full object-cover" /> : '🍰'}
+                        {item?.product?.image ? <img src={item?.product?.image} className="w-full h-full object-cover" /> : 'Item'}
                       </div>
                       <div>
-                        <p className="font-bold text-stone-900 text-sm group-hover:text-primary transition-colors">{item.product.title}</p>
-                        <p className="text-xs text-stone-400 font-bold">Qty: {item.quantity}</p>
+                        <p className="font-bold text-stone-900 text-sm group-hover:text-primary transition-colors">{item?.product?.title || 'Unknown Item'}</p>
+                        <p className="text-xs text-stone-400 font-bold">Qty: {item?.quantity || 1}</p>
                       </div>
                     </div>
-                    <span className="font-bold text-stone-900">{formatCurrency(item.product.price * item.quantity)}</span>
+                    <span className="font-bold text-stone-900">{formatCurrency((item?.product?.price || 0) * (item?.quantity || 1))}</span>
                   </div>
                 ))}
               </div>

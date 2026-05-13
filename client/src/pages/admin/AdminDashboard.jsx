@@ -50,12 +50,12 @@ export default function AdminDashboard() {
       ]);
     
       if (statsRes.status === 'fulfilled' && statsRes.value.data.success) {
-        setStats(statsRes.value.data.stats);
+        setStats({ ...stats, ...(statsRes.value.data.stats || {}) });
       }
     
       if (ordersRes.status === 'fulfilled') {
-        const orders = ordersRes.value.data.orders || [];
-        setRecentOrders(orders.slice(0, 5));
+        const orders = Array.isArray(ordersRes.value.data.orders) ? ordersRes.value.data.orders : [];
+        setRecentOrders(orders.filter(order => order && order._id).slice(0, 5));
       }
     
       if (productsRes.status === 'fulfilled') {
@@ -73,10 +73,10 @@ export default function AdminDashboard() {
   };
 
   const metricCards = [
-    { label: 'Total Orders', value: stats.totalOrders, subtext: `+${stats.todayOrders} today`, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-    { label: 'Needs Attention', value: stats.pendingOrders, subtext: 'Requires action', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', pulse: stats.pendingOrders > 0 },
-    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), subtext: 'From paid orders', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-    { label: 'Delivered', value: stats.deliveredOrders, subtext: 'Completed', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
+    { label: 'Total Orders', value: stats?.totalOrders || 0, subtext: `+${stats?.todayOrders || 0} today`, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+    { label: 'Needs Attention', value: stats?.pendingOrders || 0, subtext: 'Requires action', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', pulse: (stats?.pendingOrders || 0) > 0 },
+    { label: 'Total Revenue', value: formatCurrency(stats?.totalRevenue || 0), subtext: 'From paid orders', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+    { label: 'Delivered', value: stats?.deliveredOrders || 0, subtext: 'Completed', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
   ];
 
   if (loading) {
@@ -147,16 +147,16 @@ export default function AdminDashboard() {
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-gray-50">
-                    {recentOrders.map((order) => (
+                    {(recentOrders || []).filter(order => order && order._id).map((order) => (
                       <tr key={order._id} className="group hover:bg-gray-50 transition-colors">
                         <td className="px-10 py-6">
                            <span className="font-mono text-amber-600 text-[11px] block">#{truncateId(order._id)}</span>
                            <span className="text-[10px] text-gray-400 font-bold uppercase mt-1">{(order.products?.length || 0)} Items</span>
                         </td>
-                        <td className="px-10 py-6 font-bold text-slate-900">{order.userId?.name || 'Guest User'}</td>
-                        <td className="px-10 py-6 font-bold text-slate-900">{formatCurrency(order.totalAmount)}</td>
+                        <td className="px-10 py-6 font-bold text-slate-900">{order.userId?.name || 'Unknown'}</td>
+                        <td className="px-10 py-6 font-bold text-slate-900">{formatCurrency(order?.totalAmount || 0)}</td>
                         <td className="px-10 py-6">
-                           <StatusBadge status={order.orderStatus} />
+                           <StatusBadge status={order?.orderStatus || 'Pending'} />
                         </td>
                       </tr>
                     ))}
@@ -175,16 +175,16 @@ export default function AdminDashboard() {
                    <Activity size={24} className="text-amber-500" />
                 </div>
                 <div className="space-y-8">
-                   {stats.topProducts?.slice(0, 5).map((p, i) => (
-                      <div key={p._id} className="space-y-2">
+                   {(stats.topProducts || []).filter(p => p).slice(0, 5).map((p, i) => (
+                      <div key={p?._id || i} className="space-y-2">
                          <div className="flex justify-between text-xs font-bold">
-                            <span className="text-gray-400">{p.title}</span>
-                            <span className="text-amber-500">{p.totalOrdered} Sold</span>
+                            <span className="text-gray-400">{p?.title || 'Unknown'}</span>
+                            <span className="text-amber-500">{p?.totalOrdered || 0} Sold</span>
                          </div>
                          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-amber-500 rounded-full" 
-                              style={{ width: `${(p.totalOrdered / (stats.topProducts[0]?.totalOrdered || 1)) * 100}%` }} 
+                              style={{ width: `${((p?.totalOrdered || 0) / ((stats.topProducts || []).filter(item => item)[0]?.totalOrdered || 1)) * 100}%` }} 
                             />
                          </div>
                       </div>

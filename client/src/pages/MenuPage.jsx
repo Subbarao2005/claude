@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '../components/ProductCard';
 import api from '../api/axios';
-import { Search, RotateCcw, Filter, UtensilsCrossed, Loader2, Sparkles, ChevronRight, X } from 'lucide-react';
+import { Search, X, SlidersHorizontal, RefreshCw, Filter, UtensilsCrossed, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 export default function MenuPage() {
@@ -24,11 +24,18 @@ export default function MenuPage() {
       setLoading(true);
       setError('');
       const res = await api.get('/products');
-      if (res.data.success) {
-        setProducts(res.data.products);
+      const data = res.data;
+      if (data.success && Array.isArray(data.products)) {
+        const validProducts = data.products.filter(p =>
+          p && p._id && p.title && typeof p.price === 'number'
+        );
+        setProducts(validProducts);
+      } else {
+        setProducts([]);
       }
     } catch (err) {
       setError('Failed to load desserts. Please check your connection.');
+      setProducts([]);
       console.error('Menu fetch error:', err);
     } finally {
       setLoading(false);
@@ -40,20 +47,21 @@ export default function MenuPage() {
   }, []);
 
   const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category));
+    const cats = new Set((products || []).filter(p => p && p.category).map(p => p.category));
     return ['All', ...Array.from(cats)].sort();
   }, [products]);
 
   const filteredAndSortedProducts = useMemo(() => {
-    let result = products.filter(p => {
-      const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase());
+    let result = (products || []).filter(p => {
+      if (!p || !p._id || !p.title) return false;
+      const matchesSearch = (p.title || '').toLowerCase().includes(search.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
 
-    if (sortBy === 'low') result.sort((a, b) => a.price - b.price);
-    else if (sortBy === 'high') result.sort((a, b) => b.price - a.price);
-    else if (sortBy === 'name') result.sort((a, b) => a.title.localeCompare(b.title));
+    if (sortBy === 'low') result.sort((a, b) => (a.price || 0) - (b.price || 0));
+    else if (sortBy === 'high') result.sort((a, b) => (b.price || 0) - (a.price || 0));
+    else if (sortBy === 'name') result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
     return result;
   }, [products, search, selectedCategory, sortBy]);
@@ -120,10 +128,10 @@ export default function MenuPage() {
         {/* Category Tabs */}
         <div className="flex items-center gap-4 mb-16 overflow-x-auto pb-6 no-scrollbar snap-x">
           <div className="p-4 bg-stone-900 text-white rounded-2xl flex-shrink-0">
-            <Filter size={20} />
+            <SlidersHorizontal size={20} />
           </div>
-          {categories.map(cat => {
-            const count = products.filter(p => p.category === cat).length;
+          {categories.filter(cat => cat).map(cat => {
+            const count = (products || []).filter(p => p && p.category === cat).length;
             const isAll = cat === 'All';
             const isActive = selectedCategory === cat;
             
@@ -160,7 +168,7 @@ export default function MenuPage() {
         ) : error ? (
           <div className="text-center py-32 bg-white rounded-[4rem] border border-stone-100 shadow-2xl shadow-stone-100 flex flex-col items-center px-6">
             <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-8">
-              <RotateCcw size={48} className="animate-spin-slow" />
+              <RefreshCw size={48} className="animate-spin-slow" />
             </div>
             <h2 className="text-3xl font-playfair font-bold text-stone-900 mb-4">Something went wrong</h2>
             <p className="text-stone-500 max-w-sm mx-auto mb-10 font-medium">Our server might be taking a quick nap. Please try again in a moment.</p>
@@ -187,8 +195,10 @@ export default function MenuPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {filteredAndSortedProducts.map(product => (
-              <ProductCard key={product._id} product={product} />
+            {filteredAndSortedProducts
+              .filter(product => product && product._id && product.title)
+              .map(product => (
+              <ProductCard key={product._id} product={product} showAddToCart={true} />
             ))}
           </div>
         )}

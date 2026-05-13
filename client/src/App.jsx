@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -20,17 +20,21 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminOrderDetail from './pages/admin/AdminOrderDetail';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminCustomers from './pages/admin/AdminCustomers';
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
+const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
+const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
 
 clearCorruptedStorage();
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  useEffect(() => {
+    fetch('https://melcho-api.onrender.com/health').catch(() => {});
+  }, []);
 
   return (
     <AuthProvider>
@@ -69,12 +73,12 @@ function AppContent({ isCartOpen, setIsCartOpen }) {
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderTrackingPage /></ProtectedRoute>} />
 
                 {/* Admin Routes */}
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
-                <Route path="/admin/orders/:id" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
-                <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
-                <Route path="/admin/customers" element={<AdminRoute><AdminCustomers /></AdminRoute>} />
+                <Route path="/admin/login" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}><AdminLogin /></Suspense>} />
+                <Route path="/admin/dashboard" element={<AdminRoute><Suspense fallback={<div>Loading...</div>}><AdminDashboard /></Suspense></AdminRoute>} />
+                <Route path="/admin/orders" element={<AdminRoute><Suspense fallback={<div>Loading...</div>}><AdminOrders /></Suspense></AdminRoute>} />
+                <Route path="/admin/orders/:id" element={<AdminRoute><Suspense fallback={<div>Loading...</div>}><AdminOrderDetail /></Suspense></AdminRoute>} />
+                <Route path="/admin/products" element={<AdminRoute><Suspense fallback={<div>Loading...</div>}><AdminProducts /></Suspense></AdminRoute>} />
+                <Route path="/admin/customers" element={<AdminRoute><Suspense fallback={<div>Loading...</div>}><AdminCustomers /></Suspense></AdminRoute>} />
 
                 {/* Catch All */}
                 <Route path="*" element={<Navigate to="/" replace />} />

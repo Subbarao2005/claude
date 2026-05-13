@@ -70,8 +70,8 @@ export default function AdminOrderDetail() {
 
     try {
       setUpdating(true);
-      const res = await api.put(`/orders/admin/${id}/status`, {
-        status: newStatus,
+      const res = await api.put(`/orders/${id}/status`, {
+        orderStatus: newStatus,
         reason: cancellationReason,
       });
       if (res.data.success) {
@@ -108,7 +108,7 @@ export default function AdminOrderDetail() {
   }
 
   const products = (order?.products || []).filter(item => item);
-  const shippingAddress = order?.shippingAddress || {};
+  const shippingAddress = order?.address || order?.shippingAddress || {};
 
   return (
     <AdminLayout>
@@ -199,7 +199,7 @@ export default function AdminOrderDetail() {
               </div>
               <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100 h-full">
                 <p className="text-sm font-medium text-gray-600 leading-relaxed">
-                  {shippingAddress?.address || 'Address unavailable'}<br />
+                  {shippingAddress?.street || shippingAddress?.address || 'Address unavailable'}<br />
                   {shippingAddress?.landmark && <span className="text-amber-600 font-bold text-xs italic">Near {shippingAddress?.landmark}</span>}<br />
                   <span className="font-black text-slate-900 mt-2 block tracking-tight">
                     {shippingAddress?.city || 'Hyderabad'}, Telangana {shippingAddress?.pincode || 'N/A'}

@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '../components/ProductCard';
 import api from '../api/axios';
-import { Search, X, SlidersHorizontal, RefreshCw, Filter, UtensilsCrossed, ChevronRight } from 'lucide-react';
+import { Search, X, SlidersHorizontal, RefreshCw, UtensilsCrossed, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 export default function MenuPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showWarmingMessage, setShowWarmingMessage] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('name'); // 'name', 'low', 'high'
@@ -43,7 +44,9 @@ export default function MenuPage() {
   };
 
   useEffect(() => {
+    const timer = setTimeout(() => setShowWarmingMessage(true), 5000);
     fetchProducts();
+    return () => clearTimeout(timer);
   }, []);
 
   const categories = useMemo(() => {
@@ -160,10 +163,17 @@ export default function MenuPage() {
 
         {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <div key={n} className="bg-stone-100 rounded-[2.5rem] h-96 animate-pulse border border-stone-50 shadow-sm"></div>
-            ))}
+          <div className="space-y-8">
+            {showWarmingMessage && (
+              <div className="text-center text-stone-500 font-bold">
+                Loading... our server is warming up, please wait
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                <div key={n} className="bg-stone-100 rounded-[2.5rem] h-96 animate-pulse border border-stone-50 shadow-sm"></div>
+              ))}
+            </div>
           </div>
         ) : error ? (
           <div className="text-center py-32 bg-white rounded-[4rem] border border-stone-100 shadow-2xl shadow-stone-100 flex flex-col items-center px-6">

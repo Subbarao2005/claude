@@ -87,6 +87,14 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'OK',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api', (req, res) => {
   res.status(200).json({
     success: true,
@@ -138,7 +146,9 @@ app.get('/api/product-seed-emergency', async (req, res) => {
 
 // ─── DATABASE CONNECTION ──────────────────────────────────────────────────────
 const connectDB = require('./config/db');
-connectDB();
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
 
 // ─── ERROR HANDLING ───────────────────────────────────────────────────────────
 app.use('*', (req, res) => {
@@ -155,11 +165,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-const server = app.listen(PORT, () => {
+let server;
+if (process.env.NODE_ENV !== 'test') {
+server = app.listen(PORT, () => {
   console.log(`🚀 Melcho Server running on port ${PORT}`);
 });
+}
 
 process.on('SIGTERM', () => {
+  if (!server) {
+    return process.exit(0);
+  }
   server.close(() => {
     mongoose.connection.close(false, () => process.exit(0));
   });

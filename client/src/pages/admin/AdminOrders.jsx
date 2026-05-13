@@ -72,13 +72,14 @@ export default function AdminOrders() {
       const matchesSearch = 
         (order._id || '').toLowerCase().includes(search.toLowerCase()) || 
         order.userId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        order.address?.phone?.includes(search) ||
         order.shippingAddress?.phone?.includes(search);
       
       const matchesStatus = activeStatus === 'All' || order.orderStatus === activeStatus;
       
       const matchesPayment = paymentFilter === 'All' || 
-        (paymentFilter === 'Paid' && order.paymentStatus === 'Paid') ||
-        (paymentFilter === 'Pending' && order.paymentStatus === 'Pending');
+        (paymentFilter === 'Paid' && (order.paymentStatus === 'Paid' || order.paymentStatus === 'successful')) ||
+        (paymentFilter === 'Pending' && (order.paymentStatus === 'Pending' || order.paymentStatus === 'pending'));
 
       const matchesDate = dateFilter === 'All' || (() => {
         const orderDate = new Date(order.createdAt);
@@ -231,7 +232,7 @@ export default function AdminOrders() {
                           </span>
                        </td>
                        <td className="px-10 py-8">
-                          <p className="font-black text-slate-900 text-base">{order.userId?.name || order.shippingAddress?.name || 'Unknown'}</p>
+                          <p className="font-black text-slate-900 text-base">{order.userId?.name || order.address?.name || order.shippingAddress?.name || 'Unknown'}</p>
                           <p className="text-xs text-gray-400 font-bold mt-0.5 flex items-center gap-1.5 italic">
                              <Clock size={12} /> Ordered {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
@@ -250,9 +251,9 @@ export default function AdminOrders() {
                        </td>
                        <td className="px-10 py-8">
                           <p className="text-lg font-bold text-slate-950">{formatCurrency(order?.totalAmount || 0)}</p>
-                          <div className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest mt-1.5 ${order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                             {order.paymentStatus === 'Paid' ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
-                             {order?.paymentStatus || 'Pending'}
+                          <div className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest mt-1.5 ${order.paymentStatus === 'successful' || order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                             {order.paymentStatus === 'successful' || order.paymentStatus === 'Paid' ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                             {order?.paymentStatus || 'pending'}
                           </div>
                        </td>
                        <td className="px-10 py-8">
@@ -298,15 +299,15 @@ export default function AdminOrders() {
                 </div>
                 <div className="space-y-4">
                    <div className="flex justify-between items-center">
-                      <p className="font-black text-slate-950 text-lg">{order.userId?.name || order.shippingAddress?.name || 'Unknown'}</p>
+                      <p className="font-black text-slate-950 text-lg">{order.userId?.name || order.address?.name || order.shippingAddress?.name || 'Unknown'}</p>
                       <p className="text-xl font-bold text-primary">{formatCurrency(order?.totalAmount || 0)}</p>
                    </div>
                    <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                          {(order.products || []).filter(p => p).length || 0} Items
                       </p>
-                      <div className={`text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                         Payment: {order?.paymentStatus || 'Pending'}
+                      <div className={`text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'successful' || order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                         Payment: {order?.paymentStatus || 'pending'}
                       </div>
                    </div>
                 </div>

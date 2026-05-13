@@ -13,30 +13,60 @@ const TRANSITIONS = {
 
 exports.placeOrder = async (req, res) => {
   try {
-    const { products, totalAmount, address } = req.body;
+    console.log('Order body:', req.body);
 
-    // Validations
+    const { products, totalAmount, address } = req.body || {};
+
     if (!products || !Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ success: false, message: "Products array cannot be empty" });
+      return res.status(400).json({ success: false, message: 'Missing required field: products must be a non-empty array' });
     }
-    if (!totalAmount || totalAmount <= 0) {
-      return res.status(400).json({ success: false, message: "Total amount must be greater than 0" });
+    if (totalAmount === undefined || totalAmount === null || Number(totalAmount) <= 0) {
+      return res.status(400).json({ success: false, message: 'Missing required field: totalAmount must be greater than 0' });
     }
-    if (!address || !address.street || !address.city || !address.pincode || !address.phone) {
-      return res.status(400).json({ success: false, message: "All address fields (street, city, pincode, phone) are required" });
+    if (!address) {
+      return res.status(400).json({ success: false, message: 'Missing required field: address' });
     }
-    if (!/^\d{6}$/.test(address.pincode)) {
-      return res.status(400).json({ success: false, message: "Pincode must be exactly 6 digits" });
+    if (!address.street?.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing required address field: street' });
     }
-    if (!/^\d{10}$/.test(address.phone)) {
-      return res.status(400).json({ success: false, message: "Phone must be exactly 10 digits" });
+    if (!address.city?.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing required address field: city' });
+    }
+    if (!address.pincode?.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing required address field: pincode' });
+    }
+    if (!address.phone?.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing required address field: phone' });
+    }
+
+    const cleanProducts = products.map((item, index) => ({
+      productId: item?.productId,
+      title: item?.title,
+      price: Number(item?.price || 0),
+      quantity: Number(item?.quantity || 0)
+    }));
+
+    const invalidIndex = cleanProducts.findIndex(item =>
+      !item.productId || !item.title || item.price <= 0 || item.quantity <= 0
+    );
+    if (invalidIndex !== -1) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid product at index ${invalidIndex}. Required: productId, title, price, quantity`
+      });
     }
 
     const order = await Order.create({
       userId: req.user.id,
-      products,
-      totalAmount,
-      address,
+      products: cleanProducts,
+      totalAmount: Number(totalAmount),
+      address: {
+        street: address.street.trim(),
+        city: address.city.trim(),
+        pincode: address.pincode.trim(),
+        phone: address.phone.trim(),
+        landmark: address.landmark?.trim() || ''
+      },
       paymentStatus: 'pending',
       orderStatus: 'Pending'
     });
@@ -104,7 +134,8 @@ exports.getOrderById = async (req, res) => {
 
 exports.updateOrderStatus = async (req, res) => {
   try {
-    const { orderStatus: newStatus, reason } = req.body;
+    const { orderStatus, status, reason } = req.body;
+    const newStatus = orderStatus || status;
     const order = await Order.findById(req.params.id);
     
     if (!order) return res.status(404).json({ success: false, message: "Order not found" });

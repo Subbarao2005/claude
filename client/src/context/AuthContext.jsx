@@ -51,6 +51,7 @@ export const AuthProvider = ({ children }) => {
       _id: userData._id || userData.id,
       name: userData.name,
       email: userData.email,
+      phone: userData.phone,
       role: userData.role
     };
     localStorage.setItem('melcho_token', tokenVal);

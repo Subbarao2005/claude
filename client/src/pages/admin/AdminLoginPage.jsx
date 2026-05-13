@@ -116,7 +116,7 @@ export default function AdminLoginPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  Verifying...
+                  Please wait...
                 </>
               ) : (
                 'Sign In to Dashboard'

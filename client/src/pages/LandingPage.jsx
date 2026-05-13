@@ -7,6 +7,7 @@ import ProductCard from '../components/ProductCard';
 export default function LandingPage() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showWarmingMessage, setShowWarmingMessage] = useState(false);
 
   const categories = [
     { name: 'Bubble Waffle', emoji: '🧇', count: 12 },
@@ -31,6 +32,7 @@ export default function LandingPage() {
   ];
 
   useEffect(() => {
+    const timer = setTimeout(() => setShowWarmingMessage(true), 5000);
     const fetchFeatured = async () => {
       try {
         const res = await api.get('/products');
@@ -49,6 +51,7 @@ export default function LandingPage() {
       }
     };
     fetchFeatured();
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -130,13 +133,19 @@ export default function LandingPage() {
       </section>
 
       {/* Featured Bestsellers */}
-      {featuredProducts.length > 0 && (
+      {(loading || featuredProducts.length > 0) && (
         <section className="py-24 px-6 lg:px-12 bg-bg-main">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16 space-y-4">
               <h2 className="text-4xl lg:text-5xl font-playfair font-extrabold text-stone-900">Our Bestsellers</h2>
               <p className="text-stone-500 max-w-2xl mx-auto font-medium">The most loved desserts in Hyderabad, crafted with premium ingredients and a touch of magic.</p>
             </div>
+
+            {loading && showWarmingMessage && (
+              <div className="text-center text-stone-500 font-bold mb-8">
+                Loading... our server is warming up, please wait
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {loading ? (

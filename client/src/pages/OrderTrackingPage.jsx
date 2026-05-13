@@ -90,7 +90,7 @@ export default function OrderTrackingPage() {
   }
 
   const products = (order?.products || []).filter(item => item);
-  const shippingAddress = order?.shippingAddress || {};
+  const shippingAddress = order?.address || order?.shippingAddress || {};
   const currentStepIndex = STATUS_STEPS.findIndex(step => step.id === order?.orderStatus);
   const isCancelled = order?.orderStatus === 'Cancelled' || order?.orderStatus === 'Rejected';
 
@@ -201,12 +201,12 @@ export default function OrderTrackingPage() {
               <div className="space-y-4 pt-2">
                 <div>
                   <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Customer</p>
-                  <p className="font-bold text-stone-900">{shippingAddress?.name || 'Unknown'}</p>
+                  <p className="font-bold text-stone-900">{order?.userId?.name || 'Unknown'}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Address</p>
                   <p className="font-medium text-stone-600 leading-relaxed">
-                    {shippingAddress?.address || 'Address unavailable'}<br />
+                    {shippingAddress?.street || shippingAddress?.address || 'Address unavailable'}<br />
                     {shippingAddress?.landmark && <span className="text-stone-400 text-xs italic">Near {shippingAddress?.landmark}</span>}<br />
                     {shippingAddress?.city || 'Hyderabad'} - {shippingAddress?.pincode || 'N/A'}
                   </p>

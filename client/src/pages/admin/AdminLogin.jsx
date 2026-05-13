@@ -24,7 +24,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { login } = useAuth();
+  const { adminLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -33,19 +33,19 @@ export default function AdminLogin() {
     setError('');
 
     try {
-      const res = await login(email, password);
-      if (res.success && res.user.role === 'admin') {
+      const res = await adminLogin(email.trim().toLowerCase(), password);
+      if (res.success) {
         toast.success('Admin Authenticated. Welcome to Operations Hub.', {
            icon: '🔐',
            style: { background: '#111827', color: '#fff', borderRadius: '1rem' }
         });
         navigate('/admin/dashboard');
       } else {
-        setError('Access denied. Admin credentials required.');
+        setError(res.message || 'Access denied. Admin credentials required.');
         toast.error('Unauthorized Access');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed');
+      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
       toast.error('Invalid Credentials');
     } finally {
       setLoading(false);

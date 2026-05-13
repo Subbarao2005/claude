@@ -13,21 +13,57 @@ const generateToken = (id, role) => {
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
-    const userExists = await User.findOne({ email });
+    console.log('Register body:', req.body);
 
-    if (userExists) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
+    const { name, email, phone, password } = req.body || {};
+    const normalizedEmail = email?.trim().toLowerCase();
+
+    if (!name?.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing required field: name', data: null });
+    }
+    if (!normalizedEmail) {
+      return res.status(400).json({ success: false, message: 'Missing required field: email', data: null });
+    }
+    if (!phone?.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing required field: phone', data: null });
+    }
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Missing required field: password', data: null });
+    }
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, message: 'Invalid email format', data: null });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters', data: null });
     }
 
-    const user = await User.create({ name, email, phone, password });
+    const userExists = await User.findOne({ email: normalizedEmail });
+
+    if (userExists) {
+      return res.status(400).json({ success: false, message: 'User already exists', data: null });
+    }
+
+    const user = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      phone: phone.trim(),
+      password
+    });
+
+    const token = generateToken(user._id, user.role);
+    const responseUser = { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role };
 
     return res.status(201).json({
       success: true,
-      token: generateToken(user._id, user.role),
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      token,
+      user: responseUser,
+      data: { token, user: responseUser }
     });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      const message = Object.values(error.errors)[0]?.message || 'Registration validation failed';
+      return res.status(400).json({ success: false, message, data: null });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -38,13 +74,16 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.comparePassword(password))) {
+      const token = generateToken(user._id, user.role);
+      const responseUser = { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role };
       return res.status(200).json({
         success: true,
-        token: generateToken(user._id, user.role),
-        user: { id: user._id, name: user.name, email: user.email, role: user.role }
+        token,
+        user: responseUser,
+        data: { token, user: responseUser }
       });
     } else {
-      res.status(401).json({ success: false, message: 'Invalid email or password' });
+      res.status(401).json({ success: false, message: 'Invalid email or password', data: null });
     }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

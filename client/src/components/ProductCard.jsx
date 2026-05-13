@@ -1,102 +1,125 @@
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, Plus, Sparkles, Star, Minus } from 'lucide-react';
+import { Plus, Minus, Star } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
+import toast from 'react-hot-toast';
 
-export default function ProductCard({ product, showAddToCart = true }) {
+export default function ProductCard({ product }) {
   const { items, addToCart, updateQuantity } = useCart();
-
+  
   const cartItem = items.find(item => item._id === product._id);
-  const quantity = cartItem ? cartItem.quantity : 0;
+  const qty = cartItem ? cartItem.quantity : 0;
 
-  const fallbackImage = "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=400";
+  const categoryGradients = {
+    'Bubble Waffle': 'from-amber-400 to-amber-600',
+    'Croissants': 'from-orange-400 to-orange-600',
+    'Melt-In Moments': 'from-rose-400 to-rose-600',
+    'Add-On': 'from-indigo-400 to-indigo-600',
+    'Fruitella': 'from-emerald-400 to-emerald-600',
+    'Big Hero Bread': 'from-yellow-400 to-yellow-600',
+    'Bun & Choco': 'from-stone-600 to-stone-800'
+  };
+
+  const categoryEmojis = {
+    'Bubble Waffle': '🧇',
+    'Croissants': '🥐',
+    'Melt-In Moments': '🍮',
+    'Add-On': '✨',
+    'Fruitella': '🍓',
+    'Big Hero Bread': '🍞',
+    'Bun & Choco': '🍫'
+  };
+
+  const gradient = categoryGradients[product.category] || 'from-amber-500 to-primary-dark';
+  const emoji = categoryEmojis[product.category] || '🍰';
+
+  const handleAdd = () => {
+    addToCart(product);
+    if (qty === 0) toast.success(`${product.title} added to bag!`, {
+        icon: '🛍️',
+        style: { borderRadius: '1rem', background: '#1C1917', color: '#fff', fontWeight: 'bold' }
+    });
+  };
 
   return (
-    <div className="group bg-white rounded-3xl lg:rounded-[2.5rem] p-3 lg:p-4 shadow-sm hover:shadow-2xl transition-all duration-700 border border-slate-100 flex flex-col h-full relative overflow-hidden gpu">
-      {/* Decorative Accent */}
-      <div className="absolute -top-12 -right-12 w-24 h-24 bg-amber-50 rounded-full group-hover:scale-150 transition-transform duration-700 opacity-50" />
-      
-      {/* Image Container */}
-      <div className="relative h-48 sm:h-56 lg:h-64 w-full mb-4 lg:mb-6 rounded-2xl lg:rounded-[2rem] overflow-hidden">
-        <img 
-          src={product.image || fallbackImage} 
-          alt={product.title} 
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+    <div className="group bg-white rounded-[2rem] overflow-hidden border border-stone-100 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 flex flex-col h-full animate-fadeIn">
+      {/* Image Area */}
+      <div className="relative h-56 overflow-hidden">
+        {product.image ? (
+          <img 
+            src={product.image} 
+            alt={product.title} 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+            <span className="text-7xl drop-shadow-2xl">{emoji}</span>
+          </div>
+        )}
         
-        {/* Category Tag */}
-        <div className="absolute top-3 left-3 lg:top-4 lg:left-4">
-          <span className="px-3 py-1 lg:px-4 lg:py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-lg">
+        {/* Overlay Badges */}
+        <div className="absolute top-4 left-4">
+          <span className="px-4 py-1.5 bg-white/90 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-stone-900 rounded-full shadow-lg">
             {product.category}
           </span>
         </div>
 
-        {/* Rating */}
-        <div className="absolute top-3 right-3 lg:top-4 lg:right-4 px-2 py-0.5 lg:px-3 lg:py-1 bg-amber-500 text-slate-950 rounded-full text-[9px] lg:text-[10px] font-black flex items-center gap-1 shadow-lg shadow-amber-500/20">
-          <Star size={10} fill="currentColor" /> 4.9
+        {product.description?.toLowerCase().includes('must try') && (
+          <div className="absolute top-4 right-4">
+            <span className="px-3 py-1 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg animate-pulse">
+              🔥 Must Try
+            </span>
+          </div>
+        )}
+
+        <div className="absolute bottom-4 left-4 flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black text-amber-600 shadow-md">
+          <Star size={12} fill="currentColor" /> 4.9
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-1 lg:px-2 flex-1 flex flex-col">
-        <div className="flex justify-between items-start gap-4 mb-2">
-          <h3 className="text-lg lg:text-xl font-playfair font-bold text-slate-950 leading-tight group-hover:text-amber-600 transition-colors duration-500">
-            {product.title}
-          </h3>
-        </div>
+      {/* Card Body */}
+      <div className="p-6 flex flex-col flex-grow space-y-3">
+        <h3 className="text-xl font-playfair font-bold text-stone-900 leading-tight group-hover:text-primary transition-colors">
+          {product.title}
+        </h3>
         
-        <p className="text-xs lg:text-sm text-slate-400 line-clamp-2 mb-4 lg:mb-6 flex-1 italic leading-relaxed">
+        <p className="text-sm text-stone-500 line-clamp-2 italic font-medium leading-relaxed flex-grow">
           {product.description || "Indulge in this handcrafted Melcho creation, made with premium ingredients and a touch of magic."}
         </p>
 
-        <div className="flex items-center justify-between mt-auto pt-3 lg:pt-4 border-t border-slate-50">
+        <div className="flex items-center justify-between pt-4 border-t border-stone-50">
           <div className="flex flex-col">
-            <span className="text-[9px] lg:text-[10px] font-black text-slate-300 uppercase tracking-widest">Price</span>
-            <span className="text-xl lg:text-2xl font-bold text-slate-950">{formatCurrency(product.price)}</span>
+            <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Price</span>
+            <span className="text-2xl font-bold text-primary">{formatCurrency(product.price)}</span>
           </div>
 
-          {showAddToCart && (
-            <div className="flex items-center">
-              {quantity > 0 ? (
-                <div className="flex items-center bg-slate-950 text-white rounded-xl lg:rounded-2xl p-1 shadow-xl shadow-slate-900/10">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); updateQuantity(product._id, quantity - 1); }}
-                    className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="w-8 lg:w-10 text-center font-black text-xs lg:text-sm">{quantity}</span>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); updateQuantity(product._id, quantity + 1); }}
-                    className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-              ) : (
+          <div className="relative">
+            {qty === 0 ? (
+              <button 
+                onClick={handleAdd}
+                className="px-6 py-3 bg-primary text-white font-bold text-xs uppercase tracking-widest rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-90 flex items-center gap-2"
+              >
+                <Plus size={16} /> Add
+              </button>
+            ) : (
+              <div className="flex items-center bg-primary text-white rounded-full p-1 shadow-lg shadow-primary/20 animate-in zoom-in duration-300">
                 <button 
-                  onClick={() => addToCart(product)}
-                  className="flex items-center gap-2 lg:gap-3 px-4 lg:px-6 py-3 lg:py-4 bg-slate-950 text-white rounded-xl lg:rounded-2xl font-bold text-[10px] lg:text-xs uppercase tracking-widest hover:bg-amber-500 hover:text-slate-950 hover:shadow-xl hover:shadow-amber-200 transition-all duration-500 group/btn active:scale-95"
+                  onClick={() => updateQuantity(product._id, qty - 1)}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-full transition-colors"
                 >
-                  <Plus size={16} className="transition-transform group-hover/btn:rotate-90 duration-500" />
-                  <span className="hidden sm:inline">Add to Bag</span>
-                  <span className="sm:hidden">Add</span>
+                  <Minus size={16} />
                 </button>
-              )}
-            </div>
-          )}
+                <span className="w-8 text-center font-bold text-lg">{qty}</span>
+                <button 
+                  onClick={() => updateQuantity(product._id, qty + 1)}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Out of Stock Overlay */}
-      {!product.availability && (
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex items-center justify-center z-10">
-          <div className="bg-red-50 text-red-600 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-red-100 shadow-xl">
-            Sold Out
-          </div>
-        </div>
-      )}
     </div>
   );
 }

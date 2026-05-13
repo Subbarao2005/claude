@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { Toaster } from 'react-hot-toast';
 
 // Components
 import Navbar from './components/Navbar';
@@ -32,11 +33,26 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar onCartOpen={() => setIsCartOpen(true)} />
-            
-            <main>
-              <Routes>
+          <Toaster position="top-right" />
+          <AppContent isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
+        </BrowserRouter>
+      </CartProvider>
+    </AuthProvider>
+  );
+}
+
+function AppContent({ isCartOpen, setIsCartOpen }) {
+  const location = useLocation();
+  const isAdminPath = location.pathname.startsWith('/admin');
+  const isAuthPath = ['/login', '/register', '/admin/login'].includes(location.pathname);
+  const hideCustomerUI = isAdminPath || isAuthPath;
+
+  return (
+    <div className="min-h-screen bg-bg-main">
+      {!hideCustomerUI && <Navbar onCartOpen={() => setIsCartOpen(true)} />}
+      
+      <main className={!hideCustomerUI ? "pt-0" : ""}>
+        <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/menu" element={<MenuPage />} />
@@ -60,12 +76,9 @@ export default function App() {
                 {/* Catch All */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </main>
+      </main>
 
-            <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-          </div>
-        </BrowserRouter>
-      </CartProvider>
-    </AuthProvider>
+      {!hideCustomerUI && <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />}
+    </div>
   );
 }

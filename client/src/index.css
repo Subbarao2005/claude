@@ -1,35 +1,60 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @theme {
   --font-playfair: "Playfair Display", serif;
-  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  
+  --color-primary: #D97706;
+  --color-primary-dark: #B45309;
+  --color-primary-light: #FEF3C7;
+  --color-accent: #92400E;
+  --color-bg-main: #FFFBF5;
+  
+  --color-admin-sidebar: #111827;
+  --color-admin-header: #1F2937;
+  --color-admin-accent: #D97706;
 }
 
-html {
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-bg-main text-stone-900 font-inter antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-playfair;
+  }
 }
 
-body {
-  @apply bg-[#FDFCFB] text-slate-900;
-  font-family: var(--font-jakarta);
-  overflow-x: hidden;
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
-h1, h2, h3, h4, h5, h6, .font-playfair {
-  font-family: var(--font-playfair);
-}
-
-/* Optimize scrolling performance */
-.gpu {
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-/* Custom Scrollbar for a cleaner look */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -39,45 +64,5 @@ h1, h2, h3, h4, h5, h6, .font-playfair {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-amber-200;
-}
-
-/* Glassmorphism utility */
-.glass {
-  @apply bg-white/70 backdrop-blur-xl border border-white/20;
-}
-
-/* Mobile-first adjustments */
-@media (max-width: 640px) {
-  .hero-text {
-    @apply text-5xl leading-none;
-  }
-}
-
-/* Prevent image ghosting while loading */
-img {
-  content-visibility: auto;
-}
-
-/* Utility for no-scrollbar */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Animations */
-@keyframes bounce-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.animate-bounce-subtle {
-  animation: bounce-subtle 3s ease-in-out infinite;
+  @apply bg-stone-200 rounded-full hover:bg-amber-200 transition-colors;
 }

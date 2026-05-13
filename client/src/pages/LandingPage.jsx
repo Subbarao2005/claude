@@ -1,156 +1,277 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ArrowRight, 
-  ShoppingBag, 
-  Sparkles, 
-  Clock, 
-  MapPin, 
-  ShieldCheck,
-  Star,
-  ChevronRight,
-  Utensils
-} from 'lucide-react';
+import { ArrowRight, Sparkles, Clock, MapPin, ShieldCheck, Star, ChevronRight } from 'lucide-react';
+import api from '../api/axios';
+import ProductCard from '../components/ProductCard';
 
 export default function LandingPage() {
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const categories = [
-    { name: 'Bubble Waffle', img: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=400' },
-    { name: 'Croissants', img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=400' },
-    { name: 'Melt-In Moments', img: 'https://images.unsplash.com/photo-1544787210-2213d420436f?auto=format&fit=crop&q=80&w=400' },
+    { name: 'Bubble Waffle', emoji: '🧇', count: 12 },
+    { name: 'Add-On', emoji: '✨', count: 8 },
+    { name: 'Big Hero Bread', emoji: '🍞', count: 6 },
+    { name: 'Fruitella', emoji: '🍓', count: 5 },
+    { name: 'Croissants', emoji: '🥐', count: 7 },
+    { name: 'Bun & Choco', emoji: '🍫', count: 9 },
+    { name: 'Melt-In Moments', emoji: '🍮', count: 5 },
   ];
 
+  const steps = [
+    { icon: '🍽️', title: 'Browse Menu', desc: 'Explore 52+ handcrafted desserts across 7 categories' },
+    { icon: '🛒', title: 'Add to Cart', desc: 'Select your favorites and customize your order' },
+    { icon: '🚀', title: 'Fast Delivery', desc: 'Get your desserts delivered fresh to your door' }
+  ];
+
+  const testimonials = [
+    { name: 'Priya Sharma', initial: 'P', review: 'The Bubble Waffle with Triple Chocolate is absolutely divine! Best dessert in Hyderabad by far. Will order again!' },
+    { name: 'Rahul Mehta', initial: 'R', review: 'Biscoff Cheesecake from the Melt-In Moments menu is out of this world. Fast delivery and perfectly packed.' },
+    { name: 'Ananya Reddy', initial: 'A', review: 'The Croissant with Ferrero Rocher is my weekly treat. Amazing quality and taste!' }
+  ];
+
+  useEffect(() => {
+    const fetchBestsellers = async () => {
+      try {
+        const res = await api.get('/products');
+        if (res.data.success) {
+          setFeaturedProducts(res.data.products.slice(0, 6));
+        }
+      } catch (err) {
+        console.error('Bestsellers fetch failed');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBestsellers();
+  }, []);
+
   return (
-    <div className="flex flex-col bg-[#FDFCFB]">
+    <div className="flex flex-col animate-fadeIn">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] lg:min-h-screen flex items-center pt-24 lg:pt-32 overflow-hidden px-6">
-        {/* Abstract Background Elements */}
-        <div className="absolute top-20 right-[-10%] w-[300px] lg:w-[500px] h-[300px] lg:h-[500px] bg-amber-200/20 blur-[80px] lg:blur-[120px] rounded-full" />
-        <div className="absolute bottom-10 left-[-10%] w-[200px] lg:w-[400px] h-[200px] lg:h-[400px] bg-indigo-200/20 blur-[70px] lg:blur-[100px] rounded-full" />
-        
-        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <div className="relative z-10 animate-in fade-in slide-in-from-left-8 duration-1000">
-            <div className="inline-flex items-center gap-2 lg:gap-3 px-4 lg:px-6 py-2 lg:py-3 bg-white shadow-xl shadow-slate-200/50 rounded-full text-amber-600 font-bold text-[10px] lg:text-xs uppercase tracking-widest mb-6 lg:mb-8 border border-slate-50">
-              <Sparkles size={14} className="lg:w-4 lg:h-4" /> 100% Handcrafted Joy
+      <section className="relative min-h-[calc(100vh-64px)] flex items-center overflow-hidden px-4 sm:px-6 lg:px-12 bg-gradient-to-br from-[#FFFBF5] via-[#FEF3C7] to-[#FDE68A]">
+        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-10 gap-12 items-center py-12 lg:py-0">
+          <div className="lg:col-span-6 z-10 space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/50 backdrop-blur-sm rounded-full text-primary font-bold text-xs uppercase tracking-widest border border-primary/20">
+              <Sparkles size={16} /> Premium Desserts in Hyderabad
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-9xl font-playfair font-black text-slate-950 leading-[1.1] lg:leading-[0.9] mb-6 lg:mb-8">
-              Sweet <br />
-              <span className="text-amber-500 italic">Melodies</span> <br className="hidden lg:block" />
-              For You.
+            <h1 className="text-5xl md:text-7xl lg:text-[80px] font-playfair font-extrabold text-stone-900 leading-[1.1] tracking-tight">
+              Handcrafted Desserts, <br className="hidden md:block" /> 
+              <span className="text-primary-dark">Delivered</span> to You.
             </h1>
-            <p className="text-base lg:text-lg text-slate-500 max-w-lg mb-8 lg:mb-12 leading-relaxed font-medium">
+            <p className="text-lg md:text-xl text-stone-600 max-w-xl font-medium leading-relaxed">
               Experience the art of dessert making. From golden bubble waffles to buttery croissants, Melcho brings you a symphony of flavors delivered straight to your heart.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 lg:gap-6">
-              <Link to="/menu" className="group px-8 lg:px-10 py-5 lg:py-6 bg-slate-950 text-white rounded-2xl lg:rounded-[2rem] font-bold text-xs lg:text-sm uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 flex items-center justify-center gap-4 hover:bg-amber-500 hover:text-slate-950 transition-all duration-500 active:scale-95">
-                Explore Menu <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform duration-500" />
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Link to="/menu" className="group px-10 py-5 bg-primary text-white rounded-full font-bold text-lg shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 hover:bg-primary-dark transition-all active:scale-95">
+                Order Now <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <div className="flex items-center gap-4 px-5 py-3 lg:px-6 lg:py-4 bg-white/50 backdrop-blur-md border border-slate-100 rounded-2xl lg:rounded-[2rem]">
-                <div className="flex -space-x-3">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="w-8 lg:w-10 h-8 lg:h-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
-                      <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
-                    </div>
-                  ))}
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] lg:text-xs font-bold text-slate-900">5k+ Happy Foodies</p>
-                  <div className="flex text-amber-500 gap-0.5">
-                    {[1,2,3,4,5].map(i => <Star key={i} size={8} className="lg:w-2.5 lg:h-2.5" fill="currentColor" />)}
-                  </div>
-                </div>
-              </div>
+              <Link to="/menu" className="px-10 py-5 bg-white/30 backdrop-blur-sm border-2 border-primary text-primary rounded-full font-bold text-lg hover:bg-white/50 transition-all text-center">
+                View Menu
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-6 pt-8 border-t border-primary/10">
+              <div className="flex items-center gap-2 text-stone-700 font-semibold"><span className="text-xl">⚡</span> Fast Delivery</div>
+              <div className="flex items-center gap-2 text-stone-700 font-semibold"><span className="text-xl">🍰</span> Fresh Daily</div>
+              <div className="flex items-center gap-2 text-stone-700 font-semibold"><span className="text-xl">⭐</span> 4.8 Rated</div>
             </div>
           </div>
 
-          {/* Hero Visual */}
-          <div className="relative animate-in fade-in zoom-in duration-1000 delay-300 hidden sm:block">
-            <div className="aspect-square rounded-[3rem] lg:rounded-[4rem] overflow-hidden shadow-2xl rotate-3 scale-95 relative">
-              <img 
-                src="https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&q=80&w=800" 
-                alt="Premium Waffle" 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent" />
-            </div>
-            {/* Floating Card */}
-            <div className="absolute -bottom-6 lg:-bottom-10 -left-6 lg:-left-10 bg-white p-6 lg:p-8 rounded-3xl lg:rounded-[3rem] shadow-2xl border border-slate-50 flex items-center gap-4 lg:gap-6 animate-bounce-subtle">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-amber-100 text-amber-600 rounded-2xl lg:rounded-3xl flex items-center justify-center">
-                <Utensils size={24} className="lg:w-8 lg:h-8" />
+          <div className="lg:col-span-4 relative hidden lg:flex justify-center items-center">
+            <div className="relative w-80 h-80 bg-white rounded-full shadow-[0_0_100px_rgba(217,119,6,0.2)] flex items-center justify-center animate-[float_6s_ease-in-out_infinite]">
+              <span className="text-[140px] drop-shadow-2xl">🧇</span>
+              {/* Floating Mini Cards */}
+              <div className="absolute -top-10 -right-10 bg-white p-4 rounded-2xl shadow-xl border border-stone-50 animate-[bounce_4s_ease-in-out_infinite]">
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Trending</p>
+                <p className="font-bold text-stone-900">Bubble Waffle</p>
+                <p className="text-primary font-bold">₹199</p>
               </div>
-              <div>
-                <p className="text-[9px] lg:text-[10px] font-black text-slate-300 uppercase tracking-widest">Fast Delivery</p>
-                <p className="text-base lg:text-lg font-bold text-slate-900 leading-none mt-1">Under 25 Mins</p>
+              <div className="absolute -bottom-10 -left-10 bg-white p-4 rounded-2xl shadow-xl border border-stone-50 animate-[bounce_5s_ease-in-out_infinite]">
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Selection</p>
+                <p className="font-bold text-stone-900">52+ Sweet Delights</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-20 lg:py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-8 lg:px-12 grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
-          <div className="flex flex-col items-center text-center group">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-50 text-slate-950 rounded-2xl lg:rounded-3xl flex items-center justify-center mb-6 lg:mb-8 group-hover:bg-amber-500 transition-all duration-500">
-              <Clock size={28} className="lg:w-8 lg:h-8" />
+      {/* Category Showcase */}
+      <section className="py-24 px-6 lg:px-12 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-end mb-12">
+            <div>
+              <h2 className="text-4xl lg:text-5xl font-playfair font-extrabold text-stone-900">Explore Our Menu</h2>
+              <p className="text-stone-500 mt-2 font-medium">Select a category to see more</p>
             </div>
-            <h3 className="text-lg lg:text-xl font-bold text-slate-950 mb-3 lg:mb-4">Always Fresh</h3>
-            <p className="text-sm lg:text-base text-slate-500 leading-relaxed">Baked fresh daily using only the finest ingredients sourced with love.</p>
-          </div>
-          <div className="flex flex-col items-center text-center group">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-50 text-slate-950 rounded-2xl lg:rounded-3xl flex items-center justify-center mb-6 lg:mb-8 group-hover:bg-amber-500 transition-all duration-500">
-              <MapPin size={28} className="lg:w-8 lg:h-8" />
-            </div>
-            <h3 className="text-lg lg:text-xl font-bold text-slate-950 mb-3 lg:mb-4">Express Delivery</h3>
-            <p className="text-sm lg:text-base text-slate-500 leading-relaxed">Swift and safe delivery to ensure your treats arrive in perfect condition.</p>
-          </div>
-          <div className="flex flex-col items-center text-center group">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-50 text-slate-950 rounded-2xl lg:rounded-3xl flex items-center justify-center mb-6 lg:mb-8 group-hover:bg-amber-500 transition-all duration-500">
-              <ShieldCheck size={28} className="lg:w-8 lg:h-8" />
-            </div>
-            <h3 className="text-lg lg:text-xl font-bold text-slate-950 mb-3 lg:mb-4">Secure Checkout</h3>
-            <p className="text-sm lg:text-base text-slate-500 leading-relaxed">Safe and encrypted payments powered by Razorpay for your peace of mind.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Categories */}
-      <section className="py-20 lg:py-32 bg-slate-50 rounded-[2.5rem] lg:rounded-[4rem] mx-4 lg:mx-0">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-12 lg:mb-20 gap-6">
-            <div className="max-w-xl">
-              <h2 className="text-4xl lg:text-6xl font-playfair font-black text-slate-950 leading-tight">Explore Our <br /><span className="text-amber-500">Sweet Collections</span></h2>
-            </div>
-            <Link to="/menu" className="flex items-center gap-3 text-slate-900 font-black text-[10px] lg:text-xs uppercase tracking-widest hover:text-amber-600 transition-colors group">
-              Browse Entire Menu <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            <Link to="/menu" className="hidden sm:flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
+              Browse All <ChevronRight size={20} />
             </Link>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+          
+          <div className="flex lg:grid lg:grid-cols-7 gap-6 overflow-x-auto no-scrollbar pb-6 lg:pb-0 snap-x">
             {categories.map((cat, i) => (
-              <Link key={i} to={`/menu?category=${cat.name}`} className="group relative aspect-[4/5] rounded-3xl lg:rounded-[4rem] overflow-hidden shadow-xl">
-                <img src={cat.img} alt={cat.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                <div className="absolute bottom-8 lg:bottom-12 left-8 lg:left-12 right-8 lg:right-12">
-                  <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-1 lg:mb-2">Category</p>
-                  <h3 className="text-2xl lg:text-3xl font-playfair font-bold text-white mb-4 lg:mb-6">{cat.name}</h3>
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white text-slate-950 rounded-xl lg:rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
-                    <ArrowRight size={20} className="lg:w-6 lg:h-6" />
-                  </div>
-                </div>
+              <Link 
+                key={i}
+                to={`/menu?category=${encodeURIComponent(cat.name)}`}
+                className="flex-shrink-0 w-44 lg:w-full bg-white border border-stone-100 p-8 rounded-[2rem] text-center shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 snap-center group"
+              >
+                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-500">{cat.emoji}</div>
+                <h3 className="font-bold text-stone-900 leading-tight mb-1">{cat.name}</h3>
+                <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">{cat.count} items</p>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Footer CTA */}
-      <section className="py-24 lg:py-40">
-        <div className="max-w-5xl mx-auto px-8 text-center">
-          <h2 className="text-5xl lg:text-8xl font-playfair font-black text-slate-950 leading-tight lg:leading-none mb-8 lg:mb-12">Ready to taste perfection?</h2>
-          <Link to="/register" className="inline-flex items-center gap-3 lg:gap-4 px-8 lg:px-12 py-5 lg:py-8 bg-amber-500 text-slate-950 rounded-2xl lg:rounded-[3rem] font-bold text-sm lg:text-lg uppercase tracking-[0.2em] shadow-2xl shadow-amber-500/20 hover:bg-slate-900 hover:text-white transition-all duration-500 active:scale-95">
-            Join the Club <ArrowRight size={20} className="lg:w-6 lg:h-6" />
-          </Link>
+      {/* Featured Bestsellers */}
+      {featuredProducts.length > 0 && (
+        <section className="py-24 px-6 lg:px-12 bg-bg-main">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16 space-y-4">
+              <h2 className="text-4xl lg:text-5xl font-playfair font-extrabold text-stone-900">Our Bestsellers</h2>
+              <p className="text-stone-500 max-w-2xl mx-auto font-medium">The most loved desserts in Hyderabad, crafted with premium ingredients and a touch of magic.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {loading ? (
+                Array(6).fill(0).map((_, i) => (
+                  <div key={i} className="h-96 bg-stone-100 animate-pulse rounded-3xl" />
+                ))
+              ) : (
+                featuredProducts.map(product => (
+                  <ProductCard key={product._id} product={product} />
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* How It Works */}
+      <section className="py-24 px-6 lg:px-12 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-20">
+             <h2 className="text-4xl lg:text-5xl font-playfair font-extrabold text-stone-900">How Melcho Works</h2>
+          </div>
+          
+          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12">
+            {/* Desktop Connector Line */}
+            <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-0.5 border-t-2 border-dashed border-stone-200" />
+            
+            {steps.map((step, i) => (
+              <div key={i} className="relative z-10 flex flex-col items-center text-center space-y-6">
+                <div className="w-24 h-24 bg-primary text-white text-3xl font-bold rounded-full flex items-center justify-center shadow-2xl shadow-primary/30 border-8 border-white">
+                  {i + 1}
+                </div>
+                <div className="text-4xl">{step.icon}</div>
+                <h3 className="text-2xl font-bold text-stone-900">{step.title}</h3>
+                <p className="text-stone-500 font-medium leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
+
+      {/* Testimonials */}
+      <section className="py-24 px-6 lg:px-12 bg-bg-main overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-playfair font-extrabold text-stone-900">What Our Customers Say</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.map((t, i) => (
+              <div key={i} className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-stone-100 flex flex-col space-y-6 hover:shadow-lg transition-all">
+                <div className="text-primary flex gap-1">
+                  {Array(5).fill(0).map((_, j) => <Star key={j} size={20} fill="currentColor" />)}
+                </div>
+                <p className="text-stone-600 font-medium italic leading-relaxed flex-grow">"{t.review}"</p>
+                <div className="flex items-center gap-4 pt-6 border-t border-stone-50">
+                  <div className="w-12 h-12 bg-primary-light text-primary flex items-center justify-center rounded-full font-bold text-lg">
+                    {t.initial}
+                  </div>
+                  <div className="font-bold text-stone-900">{t.name}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Banner */}
+      <section className="px-6 lg:px-12 mb-12">
+        <div className="max-w-7xl mx-auto bg-gradient-to-r from-primary-dark to-primary rounded-[3rem] p-12 lg:p-24 text-center text-white space-y-8 relative overflow-hidden">
+          {/* Decorative Circles */}
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-black/10 rounded-full blur-3xl" />
+          
+          <div className="relative z-10 space-y-6">
+            <h2 className="text-5xl lg:text-7xl font-playfair font-extrabold leading-tight">Ready to treat yourself?</h2>
+            <p className="text-xl lg:text-2xl text-primary-light/80 font-medium max-w-2xl mx-auto">Order now and get your desserts delivered fresh to your door in under 30 minutes.</p>
+            <div className="pt-4">
+              <Link to="/menu" className="inline-flex items-center gap-3 px-12 py-6 bg-white text-primary rounded-full font-extrabold text-xl shadow-2xl hover:bg-stone-50 transition-all active:scale-95">
+                Start Ordering <ArrowRight size={24} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-stone-900 text-white pt-24 pb-12 px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
+          <div className="space-y-6">
+            <h3 className="text-3xl font-playfair font-extrabold">Melcho 🍮</h3>
+            <p className="text-stone-400 font-medium leading-relaxed">Premium desserts, handcrafted in Hyderabad and delivered with love to your doorstep.</p>
+            <div className="flex gap-4">
+              <div className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors cursor-pointer">In</div>
+              <div className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors cursor-pointer">Wa</div>
+            </div>
+          </div>
+          
+          <div className="space-y-6">
+            <h4 className="text-xl font-bold">Quick Links</h4>
+            <ul className="space-y-4 text-stone-400 font-medium">
+              <li><Link to="/menu" className="hover:text-primary transition-colors">Menu</Link></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
+              <li><Link to="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
+            </ul>
+          </div>
+          
+          <div className="space-y-6">
+            <h4 className="text-xl font-bold">Categories</h4>
+            <ul className="space-y-4 text-stone-400 font-medium">
+              <li><Link to="/menu?category=Bubble%20Waffle" className="hover:text-primary transition-colors">Bubble Waffle</Link></li>
+              <li><Link to="/menu?category=Croissants" className="hover:text-primary transition-colors">Croissants</Link></li>
+              <li><Link to="/menu?category=Melt-In%20Moments" className="hover:text-primary transition-colors">Melt-In Moments</Link></li>
+              <li><Link to="/menu?category=Fruitella" className="hover:text-primary transition-colors">Fruitella</Link></li>
+            </ul>
+          </div>
+          
+          <div className="space-y-6">
+            <h4 className="text-xl font-bold">Contact Us</h4>
+            <ul className="space-y-4 text-stone-400 font-medium">
+              <li className="flex items-center gap-3">📍 Hyderabad, Telangana</li>
+              <li className="flex items-center gap-3">📞 +91 XXXXXXXXXX</li>
+              <li className="flex items-center gap-3">🕐 Open: 11 AM – 11 PM</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto pt-12 border-t border-stone-800 text-center text-stone-500 text-sm font-bold tracking-widest uppercase">
+          © 2025 Melcho. All rights reserved.
+        </div>
+      </footer>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-20px); }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}} />
     </div>
   );
 }

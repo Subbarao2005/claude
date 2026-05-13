@@ -1,128 +1,106 @@
-import { useState, useEffect } from 'react';
-import api from '../../api/axios';
-import AdminLayout from '../../components/AdminLayout';
-import StatusBadge from '../../components/admin/StatusBadge';
-import ReasonModal from '../../components/admin/ReasonModal';
+import { useState, useEffect, useMemo } from 'react';
 import { 
-  formatCurrency, 
-  formatDate, 
-  truncateId 
-} from '../../utils/helpers';
-import { 
-  Loader2, 
+  ShoppingBag, 
   Search, 
   Filter, 
-  Eye, 
   RefreshCw, 
-  Download, 
-  ChevronRight,
-  ArrowUpDown,
-  ShoppingBag,
-  Activity
+  ArrowRight, 
+  ChevronRight, 
+  MoreVertical,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Calendar,
+  X,
+  Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import api from '../../api/axios';
+import AdminLayout from '../../components/admin/AdminLayout';
+import { formatCurrency, formatDate, truncateId } from '../../utils/helpers';
+import StatusBadge from '../../components/admin/StatusBadge';
+import toast from 'react-hot-toast';
 
-const NEXT_STATUSES = {
-  'Pending':          ['Accepted', 'Rejected'],
-  'Accepted':         ['Preparing', 'Cancelled'],
-  'Preparing':        ['Out for Delivery'],
-  'Out for Delivery': ['Delivered'],
-  'Delivered':        [],
-  'Rejected':         [],
-  'Cancelled':        []
-};
+const STATUS_TABS = [
+  'All',
+  'Pending',
+  'Accepted',
+  'Preparing',
+  'Out for Delivery',
+  'Delivered',
+  'Rejected',
+  'Cancelled'
+];
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [filterPayment, setFilterPayment] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const [reasonModal, setReasonModal] = useState({ isOpen: false, orderId: null, nextStatus: null });
+  const [search, setSearch] = useState('');
+  const [activeStatus, setActiveStatus] = useState('All');
+  const [paymentFilter, setPaymentFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(new Date());
+
+  const fetchOrders = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      
+      const res = await api.get('/orders/admin/all');
+      if (res.data.success) {
+        setOrders(res.data.orders);
+        setLastRefreshed(new Date());
+      }
+    } catch (err) {
+      toast.error('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchOrders();
+    const interval = setInterval(() => fetchOrders(true), 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [orders, filterStatus, filterPayment, searchTerm]);
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const matchesSearch = 
+        order._id.toLowerCase().includes(search.toLowerCase()) || 
+        order.userId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        order.shippingAddress?.phone?.includes(search);
+      
+      const matchesStatus = activeStatus === 'All' || order.orderStatus === activeStatus;
+      
+      const matchesPayment = paymentFilter === 'All' || 
+        (paymentFilter === 'Paid' && order.paymentStatus === 'Paid') ||
+        (paymentFilter === 'Pending' && order.paymentStatus === 'Pending');
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/orders/admin/all');
-      if (res.data.success) {
-        setOrders(res.data.orders || []);
-      }
-    } catch (err) {
-      console.error('Fetch orders error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const matchesDate = dateFilter === 'All' || (() => {
+        const orderDate = new Date(order.createdAt);
+        const today = new Date();
+        if (dateFilter === 'Today') return orderDate.toDateString() === today.toDateString();
+        if (dateFilter === 'This Week') {
+          const weekAgo = new Date();
+          weekAgo.setDate(today.getDate() - 7);
+          return orderDate >= weekAgo;
+        }
+        return true;
+      })();
 
-  const applyFilters = () => {
-    let result = [...orders];
-    if (filterStatus !== 'All') result = result.filter(o => o.orderStatus === filterStatus);
-    if (filterPayment !== 'All') result = result.filter(o => o.paymentStatus === filterPayment.toLowerCase());
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(o => 
-        o._id.toLowerCase().includes(term) || 
-        o.userId?.name?.toLowerCase().includes(term) ||
-        o.address?.phone?.includes(term)
-      );
-    }
-    setFilteredOrders(result);
-  };
-
-  const handleStatusChange = async (orderId, currentStatus, nextStatus) => {
-    if (nextStatus === 'Rejected' || nextStatus === 'Cancelled') {
-      setReasonModal({ isOpen: true, orderId, nextStatus });
-      return;
-    }
-    await updateStatusRequest(orderId, nextStatus);
-  };
-
-  const updateStatusRequest = async (orderId, nextStatus, reason = '') => {
-    try {
-      const res = await api.put(`/orders/${orderId}/status`, { 
-        orderStatus: nextStatus,
-        reason: reason 
-      });
-      if (res.data.success) {
-        setOrders(prev => prev.map(o => o._id === orderId ? { ...o, orderStatus: nextStatus } : o));
-        setReasonModal({ isOpen: false, orderId: null, nextStatus: null });
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update status');
-    }
-  };
-
-  const exportToCSV = () => {
-    const headers = ['Order ID,Customer,Email,Phone,Amount,Payment,Status,Date\n'];
-    const rows = filteredOrders.map(o => 
-      `${o._id},${o.userId?.name || 'Unknown'},${o.userId?.email || ''},${o.address?.phone || ''},${o.totalAmount},${o.paymentStatus},${o.orderStatus},${o.createdAt}\n`
-    );
-    const blob = new Blob([...headers, ...rows], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `melcho-orders-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  };
+      return matchesSearch && matchesStatus && matchesPayment && matchesDate;
+    });
+  }, [orders, search, activeStatus, paymentFilter, dateFilter]);
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader2 className="animate-spin text-amber-600 mx-auto mb-4" size={48} />
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Retrieving Transactions</p>
-          </div>
+        <div className="space-y-8">
+           <div className="h-20 bg-white rounded-3xl animate-pulse" />
+           <div className="h-96 bg-white rounded-[3rem] animate-pulse" />
         </div>
       </AdminLayout>
     );
@@ -130,153 +108,213 @@ export default function AdminOrders() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
-        <div>
-          <div className="flex items-center gap-2 text-amber-600 font-bold text-xs uppercase tracking-widest mb-2">
-            <ShoppingBag size={14} /> Order Fulfillment
-          </div>
-          <h1 className="text-5xl font-playfair font-bold text-slate-900">Manage Orders</h1>
+      {/* Page Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-12">
+        <div className="space-y-1">
+           <div className="flex items-center gap-3">
+              <h1 className="text-4xl font-playfair font-extrabold text-slate-950">Orders Management</h1>
+              <span className="px-3 py-1 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full shadow-lg shadow-amber-500/10">
+                 {filteredOrders.length} Results
+              </span>
+           </div>
+           <p className="text-gray-400 font-medium">Monitor and process incoming dessert requests.</p>
         </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={fetchOrders} 
-            className="p-4 bg-white border border-slate-100 text-slate-400 rounded-2xl hover:text-amber-600 hover:bg-amber-50 hover:border-amber-100 transition-all shadow-sm"
-          >
-            <RefreshCw size={20} />
-          </button>
-          <button 
-            onClick={exportToCSV} 
-            className="flex items-center gap-3 px-8 py-4 bg-slate-950 text-white font-bold rounded-[1.5rem] hover:bg-amber-500 hover:text-slate-950 transition-all shadow-xl shadow-slate-900/10 text-sm uppercase tracking-widest"
-          >
-            <Download size={20} /> Export Report
-          </button>
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="relative group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-500 transition-colors" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search ID or Phone..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-50 rounded-2xl focus:ring-4 focus:ring-amber-500/10 focus:bg-white outline-none transition-all font-medium text-slate-900"
-          />
-        </div>
-        
-        <div className="relative">
-          <select 
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full pl-6 pr-12 py-4 bg-slate-50 border border-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-amber-500/10 focus:bg-white font-bold text-slate-600 appearance-none transition-all"
-          >
-            <option value="All">All Statuses</option>
-            {Object.keys(NEXT_STATUSES).map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <Filter className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
-        </div>
-
-        <div className="relative">
-          <select 
-            value={filterPayment}
-            onChange={(e) => setFilterPayment(e.target.value)}
-            className="w-full pl-6 pr-12 py-4 bg-slate-50 border border-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-amber-500/10 focus:bg-white font-bold text-slate-600 appearance-none transition-all"
-          >
-            <option value="All">All Payments</option>
-            <option value="Successful">Successful</option>
-            <option value="Pending">Pending</option>
-            <option value="Failed">Failed</option>
-          </select>
-          <Activity className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
-        </div>
-
-        <div className="flex items-center justify-center bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl border border-amber-100 px-6">
-          {filteredOrders.length} Orders Listed
+        <div className="flex items-center gap-4">
+           <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest hidden md:block">Last updated: {lastRefreshed.toLocaleTimeString()}</p>
+           <button 
+             onClick={() => fetchOrders(true)}
+             disabled={refreshing}
+             className="p-4 bg-white border border-gray-100 rounded-2xl text-gray-500 hover:text-amber-600 shadow-sm transition-all active:scale-95 flex items-center gap-2"
+           >
+             <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
+             <span className="hidden sm:inline font-bold text-xs uppercase tracking-widest">Refresh</span>
+           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-0">
-            <thead>
-              <tr className="bg-slate-50/50 text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">
-                <th className="px-10 py-8 border-b border-slate-50">Transaction ID</th>
-                <th className="px-10 py-8 border-b border-slate-50">Customer</th>
-                <th className="px-10 py-8 border-b border-slate-50">Menu Items</th>
-                <th className="px-10 py-8 border-b border-slate-50">Revenue</th>
-                <th className="px-10 py-8 border-b border-slate-50">Payment</th>
-                <th className="px-10 py-8 border-b border-slate-50">Flow Control</th>
-                <th className="px-10 py-8 border-b border-slate-50 text-right">View</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filteredOrders.map((order) => {
-                const nextOptions = NEXT_STATUSES[order.orderStatus] || [];
-                
-                return (
-                  <tr key={order._id} className="group hover:bg-slate-50/50 transition-all duration-300">
-                    <td className="px-10 py-8">
-                      <span className="font-mono text-slate-400 text-[11px] block">{truncateId(order._id)}</span>
-                      <span className="text-[10px] text-slate-300 font-black mt-1.5 uppercase tracking-wider">{formatDate(order.createdAt)}</span>
-                    </td>
-                    <td className="px-10 py-8">
-                      <p className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors">{order.userId?.name || 'Guest User'}</p>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mt-1 tracking-widest">{order.address?.phone || 'No Contact'}</p>
-                    </td>
-                    <td className="px-10 py-8">
-                      <div className="flex flex-wrap gap-2">
-                        {order.products?.map((p, i) => (
-                          <span key={i} className="px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-500 shadow-sm">
-                            {p.title} <span className="text-amber-500">×{p.quantity}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-10 py-8 font-bold text-slate-900 text-lg">{formatCurrency(order.totalAmount)}</td>
-                    <td className="px-10 py-8">
-                      <StatusBadge type="payment" status={order.paymentStatus} />
-                    </td>
-                    <td className="px-10 py-8">
-                      {nextOptions.length > 0 ? (
-                        <div className="relative inline-block w-full max-w-[140px]">
-                          <select 
-                            value={order.orderStatus}
-                            onChange={(e) => handleStatusChange(order._id, order.orderStatus, e.target.value)}
-                            className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-amber-500/10 cursor-pointer shadow-sm appearance-none hover:border-amber-500 transition-all"
-                          >
-                            <option value={order.orderStatus}>{order.orderStatus}</option>
-                            {nextOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                          </select>
-                          <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 rotate-90 pointer-events-none" size={14} />
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-950 text-white rounded-xl text-[9px] font-black uppercase tracking-widest">
-                          <div className="w-1 h-1 bg-amber-500 rounded-full" />
-                          {order.orderStatus}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-10 py-8 text-right">
-                      <Link to={`/admin/orders/${order._id}`} className="p-4 text-slate-300 hover:text-amber-600 hover:bg-amber-50 rounded-2xl transition-all inline-block group/view">
-                        <Eye size={22} className="group-hover/view:scale-110 transition-transform" />
-                      </Link>
-                    </td>
+      {/* Filter Bar */}
+      <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm mb-12 space-y-8">
+         <div className="flex flex-col xl:flex-row gap-6">
+            {/* Search */}
+            <div className="flex-grow relative group">
+               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-amber-500 transition-colors" size={20} />
+               <input 
+                 type="text"
+                 placeholder="Search by Order ID, Customer Name, or Phone..."
+                 value={search}
+                 onChange={(e) => setSearch(e.target.value)}
+                 className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-50 rounded-2xl outline-none focus:ring-4 focus:ring-amber-500/5 transition-all font-medium text-slate-950"
+               />
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+               {/* Payment Filter */}
+               <div className="bg-gray-50 rounded-2xl px-5 py-2 border border-gray-100 flex items-center gap-4">
+                  <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Payment</span>
+                  <select 
+                    value={paymentFilter}
+                    onChange={(e) => setPaymentFilter(e.target.value)}
+                    className="bg-transparent font-bold text-sm text-slate-900 outline-none cursor-pointer"
+                  >
+                     <option value="All">All Statuses</option>
+                     <option value="Paid">Paid Only</option>
+                     <option value="Pending">Pending Only</option>
+                  </select>
+               </div>
+
+               {/* Date Filter */}
+               <div className="bg-gray-50 rounded-2xl px-5 py-2 border border-gray-100 flex items-center gap-4">
+                  <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Period</span>
+                  <select 
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="bg-transparent font-bold text-sm text-slate-900 outline-none cursor-pointer"
+                  >
+                     <option value="All">Lifetime</option>
+                     <option value="Today">Today Only</option>
+                     <option value="This Week">Last 7 Days</option>
+                  </select>
+               </div>
+            </div>
+         </div>
+
+         {/* Status Tabs */}
+         <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {STATUS_TABS.map(tab => {
+               const count = orders.filter(o => tab === 'All' || o.orderStatus === tab).length;
+               const isActive = activeStatus === tab;
+               return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveStatus(tab)}
+                    className={`whitespace-nowrap px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
+                       isActive 
+                        ? 'bg-amber-500 text-slate-950 shadow-xl shadow-amber-500/10' 
+                        : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+                    }`}
+                  >
+                     {tab}
+                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-gray-100 text-gray-400'
+                     }`}>
+                        {count}
+                     </span>
+                  </button>
+               );
+            })}
+         </div>
+      </div>
+
+      {/* Orders Table/Cards */}
+      <div className="bg-white rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden">
+         {/* Desktop Table */}
+         <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-left">
+               <thead>
+                  <tr className="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">
+                     <th className="px-10 py-8">Order ID</th>
+                     <th className="px-10 py-8">Customer Details</th>
+                     <th className="px-10 py-8">Items</th>
+                     <th className="px-10 py-8">Financials</th>
+                     <th className="px-10 py-8">Current Status</th>
+                     <th className="px-10 py-8 text-right">Actions</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+               </thead>
+               <tbody className="divide-y divide-gray-50">
+                  {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+                    <tr key={order._id} className="group hover:bg-amber-50/30 transition-colors">
+                       <td className="px-10 py-8">
+                          <span className="font-mono text-amber-600 font-bold text-sm block">#{truncateId(order._id)}</span>
+                          <span className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase mt-1">
+                             <Calendar size={12} /> {formatDate(order.createdAt)}
+                          </span>
+                       </td>
+                       <td className="px-10 py-8">
+                          <p className="font-black text-slate-900 text-base">{order.shippingAddress?.name || 'Guest'}</p>
+                          <p className="text-xs text-gray-400 font-bold mt-0.5 flex items-center gap-1.5 italic">
+                             <Clock size={12} /> Ordered {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                       </td>
+                       <td className="px-10 py-8">
+                          <div className="flex flex-wrap gap-1.5">
+                             <span className="px-3 py-1 bg-gray-50 text-gray-600 text-[10px] font-bold rounded-lg border border-gray-100">
+                                {order.products?.[0]?.product?.title || 'Dessert'}
+                             </span>
+                             {order.products?.length > 1 && (
+                                <span className="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg">
+                                   +{order.products.length - 1} More
+                                </span>
+                             )}
+                          </div>
+                       </td>
+                       <td className="px-10 py-8">
+                          <p className="text-lg font-bold text-slate-950">{formatCurrency(order.totalAmount)}</p>
+                          <div className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest mt-1.5 ${order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                             {order.paymentStatus === 'Paid' ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                             {order.paymentStatus}
+                          </div>
+                       </td>
+                       <td className="px-10 py-8">
+                          <StatusBadge status={order.orderStatus} />
+                       </td>
+                       <td className="px-10 py-8 text-right">
+                          <Link 
+                            to={`/admin/orders/${order._id}`}
+                            className="p-4 bg-gray-50 group-hover:bg-amber-500 text-gray-400 group-hover:text-white rounded-2xl transition-all inline-flex items-center gap-2 group/btn"
+                          >
+                             <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                          </Link>
+                       </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                       <td colSpan={6} className="py-24 text-center">
+                          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                             <ShoppingBag size={40} />
+                          </div>
+                          <p className="text-gray-400 font-bold text-sm">No orders matching your filters.</p>
+                       </td>
+                    </tr>
+                  )}
+               </tbody>
+            </table>
+         </div>
 
-      <ReasonModal 
-        isOpen={reasonModal.isOpen}
-        title={`Action: ${reasonModal.nextStatus}`}
-        onConfirm={(reason) => updateStatusRequest(reasonModal.orderId, reasonModal.nextStatus, reason)}
-        onCancel={() => setReasonModal({ isOpen: false, orderId: null, nextStatus: null })}
-      />
+         {/* Mobile Cards */}
+         <div className="lg:hidden p-6 space-y-6">
+            {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+              <Link 
+                key={order._id}
+                to={`/admin/orders/${order._id}`}
+                className="block bg-gray-50/50 rounded-3xl p-6 border border-gray-100 hover:border-amber-500 transition-all"
+              >
+                <div className="flex justify-between items-start mb-6">
+                   <div>
+                      <p className="font-mono text-amber-600 font-bold text-xs">#{truncateId(order._id)}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{formatDate(order.createdAt)}</p>
+                   </div>
+                   <StatusBadge status={order.orderStatus} />
+                </div>
+                <div className="space-y-4">
+                   <div className="flex justify-between items-center">
+                      <p className="font-black text-slate-950 text-lg">{order.shippingAddress?.name || 'Guest'}</p>
+                      <p className="text-xl font-bold text-primary">{formatCurrency(order.totalAmount)}</p>
+                   </div>
+                   <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                         {order.products?.length || 0} Items
+                      </p>
+                      <div className={`text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                         Payment: {order.paymentStatus}
+                      </div>
+                   </div>
+                </div>
+              </Link>
+            )) : (
+              <div className="py-20 text-center text-gray-400 font-bold">No orders found.</div>
+            )}
+         </div>
+      </div>
     </AdminLayout>
   );
 }

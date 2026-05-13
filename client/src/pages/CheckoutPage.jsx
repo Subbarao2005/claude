@@ -3,304 +3,290 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { Loader2, ShieldCheck, AlertCircle, MapPin, Phone, Landmark } from 'lucide-react';
-import TestPaymentInfo from '../components/TestPaymentInfo';
-
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => {
-      console.error('Failed to load Razorpay script');
-      resolve(false);
-    };
-    document.body.appendChild(script);
-  });
-};
+import toast from 'react-hot-toast';
+import { 
+  MapPin, 
+  Phone, 
+  User, 
+  ChevronRight, 
+  ShieldCheck, 
+  CreditCard, 
+  Loader2,
+  ArrowLeft,
+  Truck
+} from 'lucide-react';
+import { formatCurrency } from '../utils/helpers';
 
 export default function CheckoutPage() {
   const { items, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  const [address, setAddress] = useState({
-    street: '',
-    city: '',
-    pincode: '',
+  
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
     phone: user?.phone || '',
+    address: '',
+    city: 'Hyderabad',
+    pincode: '',
     landmark: ''
   });
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (items.length === 0) navigate('/menu');
+    if (items.length === 0) {
+      toast.error('Your cart is empty');
+      navigate('/menu');
+    }
   }, [items, navigate]);
 
-  const validateForm = () => {
-    if (!address.street.trim()) return 'Street address is required';
-    if (!address.city.trim()) return 'City is required';
-    if (!/^\d{6}$/.test(address.pincode)) return 'Enter valid 6-digit pincode';
-    if (!/^\d{10}$/.test(address.phone)) return 'Enter valid 10-digit phone number';
-    return null;
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name) newErrors.name = 'Full name is required';
+    if (!/^\d{10}$/.test(formData.phone)) newErrors.phone = '10-digit phone required';
+    if (formData.address.length < 10) newErrors.address = 'Address must be at least 10 chars';
+    if (formData.city !== 'Hyderabad') newErrors.city = 'We only deliver in Hyderabad';
+    if (!/^\d{6}$/.test(formData.pincode)) newErrors.pincode = '6-digit pincode required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handlePayment = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+    if (!validate()) {
+      toast.error('Please fix form errors');
       return;
     }
 
-    if (items.length === 0) {
-      setError('Your cart is empty');
-      return;
-    }
-
-    setPaymentLoading(true);
-    setError(null);
-
+    setLoading(true);
     try {
-      // Step 1: Load Razorpay script
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        throw new Error('Failed to load payment gateway. Check internet connection.');
-      }
-
-      // Step 2: Create order in our DB first
-      const orderPayload = {
-        products: items.map(i => ({
-          productId: i.product._id,
+      // 1. Create order on server
+      const orderRes = await api.post('/orders', {
+        products: items.map(i => ({ 
+          product: i._id, 
+          quantity: i.quantity,
           title: i.product.title,
-          price: i.product.price,
-          quantity: i.quantity
+          price: i.product.price
         })),
         totalAmount: cartTotal,
-        address: {
-          street: address.street,
-          city: address.city,
-          pincode: address.pincode,
-          phone: address.phone,
-          landmark: address.landmark || ''
+        shippingAddress: {
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          pincode: formData.pincode,
+          landmark: formData.landmark
         }
-      };
-
-      const orderRes = await api.post('/orders', orderPayload);
-
-      if (!orderRes.data.success) {
-        throw new Error(orderRes.data.message || 'Failed to create order');
-      }
-
-      const dbOrderId = orderRes.data.order._id;
-
-      // Step 3: Create Razorpay order
-      const razorpayRes = await api.post('/payment/create-order', {
-        amount: cartTotal,
-        orderId: dbOrderId
       });
 
-      if (!razorpayRes.data.success) {
-        throw new Error(razorpayRes.data.message || 'Failed to initialize payment');
-      }
+      if (orderRes.data.success) {
+        const { orderId, amount, key } = orderRes.data;
 
-      const { razorpayOrderId, amount, currency, keyId } = razorpayRes.data;
-
-      // Step 4: Open Razorpay checkout
-      const options = {
-        key: keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: amount,
-        currency: currency,
-        name: 'Melcho',
-        description: 'Premium Dessert Order',
-        order_id: razorpayOrderId,
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: address.phone || ''
-        },
-        theme: {
-          color: '#D97706'
-        },
-        handler: async (response) => {
-          // Step 5: Verify payment on success
-          try {
-            const verifyRes = await api.post('/payment/verify', {
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              orderId: dbOrderId
-            });
-
-            if (verifyRes.data.success) {
-              clearCart();
-              navigate('/order-success', {
-                state: {
-                  orderId: dbOrderId,
-                  amount: cartTotal
-                }
+        // 2. Open Razorpay
+        const options = {
+          key: key,
+          amount: amount,
+          currency: "INR",
+          name: "Melcho Desserts",
+          description: "Premium Dessert Order",
+          order_id: orderId,
+          handler: async (response) => {
+            try {
+              const verifyRes = await api.post('/orders/verify', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
               });
-            } else {
-              setError('Payment verification failed. Contact support.');
+
+              if (verifyRes.data.success) {
+                toast.success('Payment Successful! 🎉');
+                clearCart();
+                navigate('/order-success', { state: { orderId: verifyRes.data.orderId, amount: cartTotal } });
+              }
+            } catch (err) {
+              toast.error('Payment verification failed');
             }
-          } catch (verifyErr) {
-            console.error('Verify error:', verifyErr);
-            setError('Payment done but verification failed. Contact support with order ID: ' + dbOrderId);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setPaymentLoading(false);
-            setError('Payment cancelled. Your order was not placed.');
-          }
-        }
-      };
+          },
+          prefill: {
+            name: formData.name,
+            email: user?.email,
+            contact: formData.phone
+          },
+          theme: { color: "#D97706" }
+        };
 
-      const razorpayInstance = new window.Razorpay(options);
-
-      razorpayInstance.on('payment.failed', (response) => {
-        console.error('Payment failed:', response.error);
-        setError(`Payment failed: ${response.error.description}`);
-        setPaymentLoading(false);
-      });
-
-      razorpayInstance.open();
-
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
     } catch (err) {
-      console.error('Payment error:', err);
-      setError(err.message || 'Payment failed. Please try again.');
+      toast.error(err.response?.data?.message || 'Order creation failed');
     } finally {
-      setPaymentLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7">
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
-            <h1 className="text-3xl font-playfair font-bold text-slate-900 mb-8">Checkout</h1>
-            
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl flex items-center gap-3 text-sm border border-red-100">
-                <AlertCircle size={20} /> {error}
-              </div>
-            )}
+    <div className="min-h-screen bg-bg-main pt-24 pb-24 animate-fadeIn">
+      <div className="max-w-7xl mx-auto px-6 lg:px-12">
+        <button 
+          onClick={() => navigate('/menu')}
+          className="flex items-center gap-2 text-stone-400 hover:text-primary font-bold text-xs uppercase tracking-widest mb-8 transition-colors group"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Menu
+        </button>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <MapPin size={14} /> Street Address
-                </label>
-                <input
-                  type="text"
-                  value={address.street}
-                  onChange={e => setAddress({...address, street: e.target.value})}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all"
-                  placeholder="House No, Building, Street Name"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    value={address.city}
-                    onChange={e => setAddress({...address, city: e.target.value})}
-                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all"
-                    placeholder="City"
-                  />
+        <div className="flex flex-col lg:flex-row gap-12 items-start">
+          {/* Left: Shipping Form */}
+          <div className="w-full lg:w-[60%] space-y-8">
+            <div className="bg-white rounded-[2.5rem] p-10 border border-stone-100 shadow-sm space-y-10">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center">
+                  <MapPin size={28} />
                 </div>
+                <div>
+                   <h1 className="text-3xl font-playfair font-extrabold text-stone-900">Delivery Details</h1>
+                   <p className="text-stone-400 font-medium">Where should we send your treats?</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    Pincode
-                  </label>
-                  <input
+                  <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Full Name</label>
+                  <div className="relative group">
+                    <User className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300 group-focus-within:text-primary transition-colors" size={18} />
+                    <input 
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className={`w-full pl-14 pr-6 py-4 bg-stone-50 border rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium ${errors.name ? 'border-red-400' : 'border-stone-100'}`}
+                      placeholder="Your name"
+                    />
+                  </div>
+                  {errors.name && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.name}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Phone Number</label>
+                  <div className="relative group">
+                    <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300 group-focus-within:text-primary transition-colors" size={18} />
+                    <input 
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      className={`w-full pl-14 pr-6 py-4 bg-stone-50 border rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium ${errors.phone ? 'border-red-400' : 'border-stone-100'}`}
+                      placeholder="10-digit mobile"
+                    />
+                  </div>
+                  {errors.phone && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.phone}</p>}
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Street Address</label>
+                  <textarea 
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    rows={3}
+                    className={`w-full px-6 py-4 bg-stone-50 border rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium resize-none ${errors.address ? 'border-red-400' : 'border-stone-100'}`}
+                    placeholder="House/Flat no., Building, Street, Area"
+                  />
+                  {errors.address && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.address}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">City</label>
+                  <input 
+                    readOnly
+                    value={formData.city}
+                    className="w-full px-6 py-4 bg-stone-100 border border-stone-100 rounded-2xl text-stone-500 font-bold cursor-not-allowed"
+                  />
+                  <p className="text-[9px] text-primary font-bold ml-1">Currently serving Hyderabad only</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Pincode</label>
+                  <input 
                     type="text"
                     maxLength={6}
-                    value={address.pincode}
-                    onChange={e => setAddress({...address, pincode: e.target.value})}
-                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all"
-                    placeholder="6 digits"
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({...formData, pincode: e.target.value.replace(/\D/g, '')})}
+                    className={`w-full px-6 py-4 bg-stone-50 border rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium ${errors.pincode ? 'border-red-400' : 'border-stone-100'}`}
+                    placeholder="6-digit pincode"
                   />
+                  {errors.pincode && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.pincode}</p>}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <Phone size={14} /> Phone
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={10}
-                    value={address.phone}
-                    onChange={e => setAddress({...address, phone: e.target.value})}
-                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all"
-                    placeholder="10 digits"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <Landmark size={14} /> Landmark
-                  </label>
-                  <input
-                    type="text"
-                    value={address.landmark}
-                    onChange={e => setAddress({...address, landmark: e.target.value})}
-                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all"
-                    placeholder="Optional"
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Landmark (Optional)</label>
+                  <input 
+                    value={formData.landmark}
+                    onChange={(e) => setFormData({...formData, landmark: e.target.value})}
+                    className="w-full px-6 py-4 bg-stone-50 border border-stone-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                    placeholder="Near landmark, metro station, etc."
                   />
                 </div>
               </div>
             </div>
-            
-            <TestPaymentInfo />
+
+            <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-[2rem] flex items-center gap-4 text-emerald-700">
+               <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Truck size={20} />
+               </div>
+               <p className="font-bold text-sm">You qualify for <span className="underline">Free Express Delivery</span> on this order!</p>
+            </div>
           </div>
-        </div>
 
-        <div className="lg:col-span-5">
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 sticky top-8">
-            <h2 className="text-2xl font-playfair font-bold text-slate-900 mb-6">Order Summary</h2>
-            <div className="space-y-4 mb-8">
-              {items.map((item) => (
-                <div key={item._id} className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 font-medium">{item.product.title} x {item.quantity}</span>
-                  <span className="font-bold text-slate-900">₹{item.product.price * item.quantity}</span>
+          {/* Right: Order Summary */}
+          <div className="w-full lg:w-[40%] lg:sticky lg:top-24 space-y-6">
+            <div className="bg-white rounded-[2.5rem] p-10 border border-stone-100 shadow-xl space-y-8">
+              <h2 className="text-2xl font-playfair font-extrabold text-stone-900 border-b border-stone-50 pb-6">Order Summary</h2>
+              
+              <div className="space-y-6 max-h-64 overflow-y-auto pr-2 no-scrollbar">
+                {items.map((item) => (
+                  <div key={item._id} className="flex justify-between items-center group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-stone-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center text-xl">
+                        {item.product.image ? <img src={item.product.image} className="w-full h-full object-cover" /> : '🍰'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-stone-900 text-sm group-hover:text-primary transition-colors">{item.product.title}</p>
+                        <p className="text-xs text-stone-400 font-bold">Qty: {item.quantity}</p>
+                      </div>
+                    </div>
+                    <span className="font-bold text-stone-900">{formatCurrency(item.product.price * item.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-stone-50">
+                <div className="flex justify-between text-stone-400 text-xs font-black uppercase tracking-widest">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(cartTotal)}</span>
                 </div>
-              ))}
-            </div>
-            <div className="border-t border-slate-100 pt-6 mb-8">
-              <div className="flex justify-between items-center text-2xl font-bold text-slate-900">
-                <span>Total Amount</span>
-                <span className="text-amber-600">₹{cartTotal}</span>
+                <div className="flex justify-between text-stone-400 text-xs font-black uppercase tracking-widest">
+                  <span>Delivery Fee</span>
+                  <span className="text-emerald-600">Free</span>
+                </div>
+                <div className="h-px bg-stone-100" />
+                <div className="flex justify-between items-center">
+                  <span className="text-2xl font-playfair font-extrabold text-stone-900">Total</span>
+                  <span className="text-3xl font-bold text-primary">{formatCurrency(cartTotal)}</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={handlePayment}
+                disabled={loading}
+                className="w-full py-6 bg-stone-900 text-white rounded-[2rem] font-bold text-lg shadow-2xl shadow-stone-900/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4 group"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : (
+                  <>
+                    Pay {formatCurrency(cartTotal)} <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-center gap-2 text-stone-300 text-[10px] font-black uppercase tracking-widest">
+                 <ShieldCheck size={14} /> Secured by Razorpay
               </div>
             </div>
-            <button
-              onClick={handlePayment}
-              disabled={paymentLoading || items.length === 0}
-              className="w-full py-5 bg-amber-600 text-white rounded-2xl font-bold text-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-amber-100 flex items-center justify-center gap-3"
-            >
-              {paymentLoading ? (
-                <>
-                  <Loader2 className="animate-spin" size={24} />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <ShieldCheck size={24} />
-                  Pay ₹{cartTotal}
-                </>
-              )}
-            </button>
           </div>
         </div>
       </div>

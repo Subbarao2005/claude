@@ -12,7 +12,7 @@ import {
   X,
   Sparkles
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 
 export default function AdminLayout({ children }) {

@@ -44,7 +44,7 @@ export default function Navbar({ onCartOpen }) {
             M
           </div>
           <span className={`text-2xl font-playfair font-black tracking-tight transition-colors duration-500 ${
-            scrolled ? 'text-slate-900' : 'text-slate-900' // Keeping it dark for visibility on all backgrounds
+            scrolled ? 'text-slate-900' : 'text-slate-900'
           }`}>
             Melcho<span className="text-amber-500">.</span>
           </span>

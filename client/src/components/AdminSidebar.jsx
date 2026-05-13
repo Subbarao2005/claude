@@ -32,7 +32,7 @@ export default function AdminSidebar() {
           </div>
           <div>
             <h2 className="text-white font-playfair font-bold text-lg leading-tight">Melcho</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/70">Management</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/70">Management v2.1</p>
           </div>
         </div>
       </div>

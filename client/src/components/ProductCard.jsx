@@ -1,9 +1,12 @@
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, Plus, Sparkles, Star } from 'lucide-react';
+import { ShoppingBag, Plus, Sparkles, Star, Minus } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
 
 export default function ProductCard({ product, showAddToCart = true }) {
-  const { addToCart } = useCart();
+  const { items, addToCart, updateQuantity } = useCart();
+
+  const cartItem = items.find(item => item._id === product._id);
+  const quantity = cartItem ? cartItem.quantity : 0;
 
   const fallbackImage = "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=400";
 
@@ -54,14 +57,34 @@ export default function ProductCard({ product, showAddToCart = true }) {
           </div>
 
           {showAddToCart && (
-            <button 
-              onClick={() => addToCart(product)}
-              className="flex items-center gap-2 lg:gap-3 px-4 lg:px-6 py-3 lg:py-4 bg-slate-950 text-white rounded-xl lg:rounded-2xl font-bold text-[10px] lg:text-xs uppercase tracking-widest hover:bg-amber-500 hover:text-slate-950 hover:shadow-xl hover:shadow-amber-200 transition-all duration-500 group/btn active:scale-95"
-            >
-              <Plus size={16} className="transition-transform group-hover/btn:rotate-90 duration-500" />
-              <span className="hidden sm:inline">Add to Bag</span>
-              <span className="sm:hidden">Add</span>
-            </button>
+            <div className="flex items-center">
+              {quantity > 0 ? (
+                <div className="flex items-center bg-slate-950 text-white rounded-xl lg:rounded-2xl p-1 shadow-xl shadow-slate-900/10">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); updateQuantity(product._id, quantity - 1); }}
+                    className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-8 lg:w-10 text-center font-black text-xs lg:text-sm">{quantity}</span>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); updateQuantity(product._id, quantity + 1); }}
+                    className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => addToCart(product)}
+                  className="flex items-center gap-2 lg:gap-3 px-4 lg:px-6 py-3 lg:py-4 bg-slate-950 text-white rounded-xl lg:rounded-2xl font-bold text-[10px] lg:text-xs uppercase tracking-widest hover:bg-amber-500 hover:text-slate-950 hover:shadow-xl hover:shadow-amber-200 transition-all duration-500 group/btn active:scale-95"
+                >
+                  <Plus size={16} className="transition-transform group-hover/btn:rotate-90 duration-500" />
+                  <span className="hidden sm:inline">Add to Bag</span>
+                  <span className="sm:hidden">Add</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -8,6 +8,8 @@ import {
   EyeOff, 
   ShieldCheck, 
   ArrowRight, 
+  ArrowLeft,
+  AlertCircle,
   Loader2,
   Package,
   ShoppingBag,

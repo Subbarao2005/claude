@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/admin/AdminLayout';
+import StatusBadge from '../../components/admin/StatusBadge';
 import { 
   Users, 
   Search, 
@@ -13,7 +14,8 @@ import {
   Loader2,
   X,
   CreditCard,
-  UserCheck
+  UserCheck,
+  ArrowRight
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import toast from 'react-hot-toast';

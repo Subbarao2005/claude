@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '../components/ProductCard';
 import api from '../api/axios';
-import { Search, RotateCcw, Filter, UtensilsCrossed, Loader2, Sparkles, ChevronRight } from 'lucide-react';
+import { Search, RotateCcw, Filter, UtensilsCrossed, Loader2, Sparkles, ChevronRight, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 export default function MenuPage() {

@@ -13,6 +13,7 @@ import {
   CreditCard, 
   Loader2,
   ArrowLeft,
+  ArrowRight,
   Truck
 } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';

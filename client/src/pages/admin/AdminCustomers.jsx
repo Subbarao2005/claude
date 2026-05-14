@@ -29,6 +29,11 @@ export default function AdminCustomers() {
   const [ordersLoading, setOrdersLoading] = useState(false);
 
   useEffect(() => {
+    console.log('AdminCustomers mounted successfully');
+    return () => console.log('AdminCustomers unmounting');
+  }, []);
+
+  useEffect(() => {
     fetchCustomers();
   }, []);
 
@@ -65,15 +70,21 @@ export default function AdminCustomers() {
     fetchCustomerOrders(customer._id);
   };
 
-  const filteredCustomers = customers.filter(c => {
-    const safeSearch = String(search || '').toLowerCase().trim();
-    if (!safeSearch) return true;
-    
-    const nameStr = String(c.name || '').toLowerCase();
-    const emailStr = String(c.email || '').toLowerCase();
-    
-    return nameStr.includes(safeSearch) || emailStr.includes(safeSearch);
-  });
+  let filteredCustomers = [];
+  try {
+    filteredCustomers = (Array.isArray(customers) ? customers : []).filter(c => {
+      if (!c || typeof c !== 'object') return false;
+      const safeSearch = String(search || '').toLowerCase().trim();
+      if (!safeSearch) return true;
+      
+      const nameStr = String(c.name || '').toLowerCase();
+      const emailStr = String(c.email || '').toLowerCase();
+      
+      return nameStr.includes(safeSearch) || emailStr.includes(safeSearch);
+    });
+  } catch(e) {
+    console.error('FILTER CRASH:', e);
+  }
 
   const stats = {
     total: customers.length,

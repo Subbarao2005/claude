@@ -36,6 +36,11 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AdminDashboard mounted successfully');
+    return () => console.log('AdminDashboard unmounting');
+  }, []);
+
+  useEffect(() => {
     fetchDashboard();
   }, []);
 
@@ -55,7 +60,16 @@ export default function AdminDashboard() {
     
       if (ordersRes.status === 'fulfilled') {
         const orders = Array.isArray(ordersRes.value.data.orders) ? ordersRes.value.data.orders : [];
-        setRecentOrders(orders.filter(order => order && order._id).slice(0, 5));
+        let validOrders = [];
+        try {
+          validOrders = orders.filter(order => {
+            if (!order || typeof order !== 'object') return false;
+            return Boolean(order._id);
+          });
+        } catch (e) {
+          console.error('FILTER CRASH:', e);
+        }
+        setRecentOrders(validOrders.slice(0, 5));
       }
     
       if (productsRes.status === 'fulfilled') {
@@ -175,7 +189,14 @@ export default function AdminDashboard() {
                    <Activity size={24} className="text-amber-500" />
                 </div>
                 <div className="space-y-8">
-                   {(stats.topProducts || []).filter(p => p).slice(0, 5).map((p, i) => (
+                   {(() => {
+                     let validProducts = [];
+                     try {
+                       validProducts = (Array.isArray(stats.topProducts) ? stats.topProducts : []).filter(p => p && typeof p === 'object');
+                     } catch(e) {}
+                     const maxOrdered = validProducts[0]?.totalOrdered || 1;
+                     
+                     return validProducts.slice(0, 5).map((p, i) => (
                       <div key={p?._id || i} className="space-y-2">
                          <div className="flex justify-between text-xs font-bold">
                             <span className="text-gray-400">{p?.title || 'Unknown'}</span>
@@ -184,11 +205,12 @@ export default function AdminDashboard() {
                          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-amber-500 rounded-full" 
-                              style={{ width: `${((p?.totalOrdered || 0) / ((stats.topProducts || []).filter(item => item)[0]?.totalOrdered || 1)) * 100}%` }} 
+                              style={{ width: `${((p?.totalOrdered || 0) / maxOrdered) * 100}%` }} 
                             />
                          </div>
                       </div>
-                   ))}
+                     ));
+                   })()}
                 </div>
               </div>
            </div>

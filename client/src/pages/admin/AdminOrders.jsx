@@ -61,47 +61,61 @@ export default function AdminOrders() {
   };
 
   useEffect(() => {
+    console.log('AdminOrders mounted successfully');
+    return () => console.log('AdminOrders unmounting');
+  }, []);
+
+  useEffect(() => {
     fetchOrders();
     const interval = setInterval(() => fetchOrders(true), 60000);
     return () => clearInterval(interval);
   }, []);
 
   const filteredOrders = useMemo(() => {
-    return (orders || []).filter(order => {
-      if (!order || !order._id) return false;
-      
-      const safeSearch = String(search || '').toLowerCase().trim();
-      const orderIdStr = String(order._id || '').toLowerCase();
-      const userNameStr = String(order.userId?.name || '').toLowerCase();
-      const addressPhoneStr = String(order.address?.phone || '');
-      const shippingPhoneStr = String(order.shippingAddress?.phone || '');
+    let result = [];
+    try {
+      result = (orders || []).filter(order => {
+        if (!order || typeof order !== 'object') return false;
+        if (!order._id) return false;
+        
+        const safeSearch = String(search || '').toLowerCase().trim();
+        const orderIdStr = String(order._id || '').toLowerCase();
+        const userNameStr = String(order.userId?.name || '').toLowerCase();
+        const addressPhoneStr = String(order.address?.phone || '');
+        const shippingPhoneStr = String(order.shippingAddress?.phone || '');
 
-      const matchesSearch = safeSearch === '' || 
-        orderIdStr.includes(safeSearch) || 
-        userNameStr.includes(safeSearch) ||
-        addressPhoneStr.includes(safeSearch) ||
-        shippingPhoneStr.includes(safeSearch);
-      
-      const matchesStatus = activeStatus === 'All' || order.orderStatus === activeStatus;
-      
-      const matchesPayment = paymentFilter === 'All' || 
-        (paymentFilter === 'Paid' && (order.paymentStatus === 'Paid' || order.paymentStatus === 'successful')) ||
-        (paymentFilter === 'Pending' && (order.paymentStatus === 'Pending' || order.paymentStatus === 'pending'));
+        const matchesSearch = safeSearch === '' || 
+          orderIdStr.includes(safeSearch) || 
+          userNameStr.includes(safeSearch) ||
+          addressPhoneStr.includes(safeSearch) ||
+          shippingPhoneStr.includes(safeSearch);
+        
+        const matchesStatus = activeStatus === 'All' || order.orderStatus === activeStatus;
+        
+        const matchesPayment = paymentFilter === 'All' || 
+          (paymentFilter === 'Paid' && (order.paymentStatus === 'Paid' || order.paymentStatus === 'successful')) ||
+          (paymentFilter === 'Pending' && (order.paymentStatus === 'Pending' || order.paymentStatus === 'pending'));
 
-      const matchesDate = dateFilter === 'All' || (() => {
-        const orderDate = new Date(order.createdAt);
-        const today = new Date();
-        if (dateFilter === 'Today') return orderDate.toDateString() === today.toDateString();
-        if (dateFilter === 'This Week') {
-          const weekAgo = new Date();
-          weekAgo.setDate(today.getDate() - 7);
-          return orderDate >= weekAgo;
-        }
-        return true;
-      })();
+        const matchesDate = dateFilter === 'All' || (() => {
+          try {
+            const orderDate = new Date(order.createdAt);
+            const today = new Date();
+            if (dateFilter === 'Today') return orderDate.toDateString() === today.toDateString();
+            if (dateFilter === 'This Week') {
+              const weekAgo = new Date();
+              weekAgo.setDate(today.getDate() - 7);
+              return orderDate >= weekAgo;
+            }
+          } catch (e) {}
+          return true;
+        })();
 
-      return matchesSearch && matchesStatus && matchesPayment && matchesDate;
-    });
+        return matchesSearch && matchesStatus && matchesPayment && matchesDate;
+      });
+    } catch (e) {
+      console.error('FILTER CRASH:', e);
+    }
+    return result;
   }, [orders, search, activeStatus, paymentFilter, dateFilter]);
 
   if (loading) {
@@ -188,9 +202,15 @@ export default function AdminOrders() {
          </div>
 
          {/* Status Tabs */}
-         <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
             {STATUS_TABS.map(tab => {
-               const count = (orders || []).filter(o => o && (tab === 'All' || o.orderStatus === tab)).length;
+               let count = 0;
+               try {
+                 count = (Array.isArray(orders) ? orders : []).filter(o => {
+                   if (!o || typeof o !== 'object') return false;
+                   return tab === 'All' || String(o.orderStatus || '') === tab;
+                 }).length;
+               } catch(e) {}
                const isActive = activeStatus === tab;
                return (
                   <button

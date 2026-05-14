@@ -48,6 +48,11 @@ export default function AdminProducts() {
   const [submitLoading, setSubmitLoading] = useState(false);
 
   useEffect(() => {
+    console.log('AdminProducts mounted successfully');
+    return () => console.log('AdminProducts unmounting');
+  }, []);
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 

@@ -224,29 +224,49 @@ exports.getOrderStats = async (req, res) => {
       ]),
       Order.aggregate([
         { $unwind: '$products' },
+        { $match: { 
+          'products.title': { $exists: true, $ne: null }
+        }},
         { $group: {
           _id: '$products.productId',
           title: { $first: '$products.title' },
           totalOrdered: { $sum: '$products.quantity' }
+        }},
+        { $match: { 
+          title: { $ne: null },
+          totalOrdered: { $gt: 0 }
         }},
         { $sort: { totalOrdered: -1 } },
         { $limit: 5 }
       ])
     ]);
 
+    // Ensure topProducts has no null/undefined items
+    const safeTopProducts = (topProducts || [])
+      .filter(p => p && p.title && p.totalOrdered)
+      .map(p => ({
+        _id: String(p._id || ''),
+        title: String(p.title || 'Unknown'),
+        totalOrdered: Number(p.totalOrdered || 0)
+      }));
+
     return res.status(200).json({
       success: true,
       stats: {
-        totalOrders,
-        todayOrders,
-        weekOrders,
-        pendingOrders,
-        deliveredOrders,
-        totalRevenue: revenueResult[0]?.total || 0,
-        topProducts
+        totalOrders: Number(totalOrders || 0),
+        todayOrders: Number(todayOrders || 0),
+        weekOrders: Number(weekOrders || 0),
+        pendingOrders: Number(pendingOrders || 0),
+        deliveredOrders: Number(deliveredOrders || 0),
+        totalRevenue: Number(revenueResult[0]?.total || 0),
+        topProducts: safeTopProducts
       }
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch (err) {
+    console.error('Stats error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };

@@ -1,57 +1,91 @@
+export const safeStr = (v) => String(v ?? '');
+export const safeTrim = (v) => safeStr(v).trim();
+export const safeLower = (v) => safeStr(v).toLowerCase();
+export const safeNum = (v) => {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+};
+export const safeArr = (v) => Array.isArray(v) ? v : [];
+
 export const getStatusColor = (status) => {
-  if (!status) return 'bg-stone-100 text-stone-800';
-  const s = status.toLowerCase();
-  const colors = {
-    'pending': 'bg-amber-100 text-amber-600',
-    'accepted': 'bg-blue-100 text-blue-600',
-    'preparing': 'bg-orange-100 text-orange-600',
-    'out for delivery': 'bg-purple-100 text-purple-600',
-    'delivered': 'bg-emerald-100 text-emerald-600',
-    'rejected': 'bg-red-100 text-red-600',
-    'cancelled': 'bg-red-100 text-red-600'
+  const s = safeTrim(status);
+  const map = {
+    'Pending':          'bg-yellow-100 text-yellow-800',
+    'Accepted':         'bg-blue-100 text-blue-800',
+    'Preparing':        'bg-orange-100 text-orange-800',
+    'Out for Delivery': 'bg-purple-100 text-purple-800',
+    'Delivered':        'bg-green-100 text-green-800',
+    'Rejected':         'bg-red-100 text-red-800',
+    'Cancelled':        'bg-gray-100 text-gray-600'
   };
-  return colors[s] || 'bg-stone-100 text-stone-800';
+  return map[s] || 'bg-gray-100 text-gray-600';
 };
 
 export const getPaymentStatusColor = (status) => {
-  if (!status) return 'bg-stone-100 text-stone-800';
-  const s = status.toLowerCase();
-  const colors = {
-    'pending': 'bg-amber-100 text-amber-600',
-    'paid': 'bg-emerald-100 text-emerald-600',
-    'failed': 'bg-red-100 text-red-600'
+  const s = safeLower(safeTrim(status));
+  const map = {
+    'pending':    'bg-yellow-100 text-yellow-800',
+    'successful': 'bg-green-100 text-green-800',
+    'paid':       'bg-green-100 text-green-800',
+    'failed':     'bg-red-100 text-red-800'
   };
-  return colors[s] || 'bg-stone-100 text-stone-800';
+  return map[s] || 'bg-gray-100 text-gray-600';
+};
+
+export const getNextStatuses = (current) => {
+  const transitions = {
+    'Pending':          ['Accepted', 'Rejected'],
+    'Accepted':         ['Preparing', 'Cancelled'],
+    'Preparing':        ['Out for Delivery'],
+    'Out for Delivery': ['Delivered'],
+    'Delivered':        [],
+    'Rejected':         [],
+    'Cancelled':        []
+  };
+  return transitions[safeTrim(current)] || [];
 };
 
 export const formatCurrency = (amount) => {
-  if (!amount && amount !== 0) return '₹0';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(amount);
+  return `₹ ${safeNum(amount).toFixed(2)}`;
 };
 
 export const truncateId = (id) => {
-  if (!id) return '00000000';
-  return id.toString().slice(-8).toUpperCase();
+  if (!id) return '#00000000';
+  return '#' + safeStr(id).slice(-8).toUpperCase();
 };
 
-export const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
+export const formatDate = (d) => {
+  if (!d) return 'N/A';
   try {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(d).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
-  } catch {
-    return 'N/A';
-  }
+  } catch { return 'N/A'; }
 };
+
+export const formatRelativeTime = (d) => {
+  if (!d) return 'N/A';
+  try {
+    const diff = Date.now() - new Date(d).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const dy = Math.floor(diff / 86400000);
+    if (m < 1) return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    if (h < 24) return `${h}h ago`;
+    return `${dy}d ago`;
+  } catch { return 'N/A'; }
+};
+
+export const validateEmail = (e) => 
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeStr(e));
+
+export const validatePhone = (p) => 
+  /^\d{10}$/.test(safeStr(p));
+
+export const validatePincode = (p) => 
+  /^\d{6}$/.test(safeStr(p));
 
 export const clearCorruptedStorage = () => {
   try {

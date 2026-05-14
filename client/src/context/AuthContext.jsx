@@ -93,17 +93,41 @@ export const AuthProvider = ({ children }) => {
   };
 
   const adminLogin = async (email, password) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await api.post('/auth/admin/login', { email, password });
-      const userData = res.data.admin || res.data.user;
-      if (res.data.success && userData?.role === 'admin') {
-        saveAuth(res.data.token, userData);
-        return { success: true, data: res.data };
+      // Safely convert to strings
+      const emailStr = String(email || '').trim();
+      const passwordStr = String(password || '');
+
+      if (!emailStr || !passwordStr) {
+        return { 
+          success: false, 
+          message: 'Email and password are required' 
+        };
       }
-      return { success: false, message: 'Access denied. Admins only.' };
+
+      const res = await api.post('/auth/admin/login', { 
+        email: emailStr, 
+        password: passwordStr 
+      });
+
+      if (res.data.success) {
+        const { token, admin, user: apiUser } = res.data;
+        const userData = admin || apiUser;
+        if (userData?.role === 'admin') {
+          saveAuth(token, userData);
+          return { success: true, data: res.data };
+        }
+        return { success: false, message: 'Access denied. Admins only.' };
+      } else {
+        return { 
+          success: false, 
+          message: res.data.message || 'Login failed' 
+        };
+      }
     } catch (err) {
-      return { success: false, message: err.response?.data?.message || 'Admin login failed' };
+      const message = err.response?.data?.message || err.message || 'Admin login failed';
+      return { success: false, message };
     } finally {
       setLoading(false);
     }

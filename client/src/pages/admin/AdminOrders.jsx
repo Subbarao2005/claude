@@ -69,11 +69,18 @@ export default function AdminOrders() {
   const filteredOrders = useMemo(() => {
     return (orders || []).filter(order => {
       if (!order || !order._id) return false;
-      const matchesSearch = 
-        (order._id || '').toLowerCase().includes(search.toLowerCase()) || 
-        order.userId?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        order.address?.phone?.includes(search) ||
-        order.shippingAddress?.phone?.includes(search);
+      
+      const safeSearch = String(search || '').toLowerCase().trim();
+      const orderIdStr = String(order._id || '').toLowerCase();
+      const userNameStr = String(order.userId?.name || '').toLowerCase();
+      const addressPhoneStr = String(order.address?.phone || '');
+      const shippingPhoneStr = String(order.shippingAddress?.phone || '');
+
+      const matchesSearch = safeSearch === '' || 
+        orderIdStr.includes(safeSearch) || 
+        userNameStr.includes(safeSearch) ||
+        addressPhoneStr.includes(safeSearch) ||
+        shippingPhoneStr.includes(safeSearch);
       
       const matchesStatus = activeStatus === 'All' || order.orderStatus === activeStatus;
       

@@ -57,14 +57,19 @@ export default function MenuPage() {
   const filteredAndSortedProducts = useMemo(() => {
     let result = (products || []).filter(p => {
       if (!p || !p._id || !p.title) return false;
-      const matchesSearch = (p.title || '').toLowerCase().includes(search.toLowerCase());
+      
+      const safeSearch = String(search || '').toLowerCase().trim();
+      const titleStr = String(p.title || '').toLowerCase();
+      
+      const matchesSearch = safeSearch === '' || titleStr.includes(safeSearch);
+      
       const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
 
     if (sortBy === 'low') result.sort((a, b) => (a.price || 0) - (b.price || 0));
     else if (sortBy === 'high') result.sort((a, b) => (b.price || 0) - (a.price || 0));
-    else if (sortBy === 'name') result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    else if (sortBy === 'name') result.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
 
     return result;
   }, [products, search, selectedCategory, sortBy]);

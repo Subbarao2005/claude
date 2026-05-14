@@ -65,10 +65,15 @@ export default function AdminCustomers() {
     fetchCustomerOrders(customer._id);
   };
 
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCustomers = customers.filter(c => {
+    const safeSearch = String(search || '').toLowerCase().trim();
+    if (!safeSearch) return true;
+    
+    const nameStr = String(c.name || '').toLowerCase();
+    const emailStr = String(c.email || '').toLowerCase();
+    
+    return nameStr.includes(safeSearch) || emailStr.includes(safeSearch);
+  });
 
   const stats = {
     total: customers.length,

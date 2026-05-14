@@ -28,12 +28,14 @@ export default function AdminLogin() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const res = await adminLogin(email.trim().toLowerCase(), password);
+      const safeEmail = String(email || '').trim().toLowerCase();
+      const safePassword = String(password || '');
+      const res = await adminLogin(safeEmail, safePassword);
       if (res.success) {
         toast.success('Admin Authenticated. Welcome to Operations Hub.', {
            icon: '🔐',

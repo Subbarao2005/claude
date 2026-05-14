@@ -76,3 +76,29 @@ export const clearCorruptedStorage = () => {
     localStorage.removeItem('melcho_cart');
   }
 };
+
+// Safe string operations — never crash on non-strings
+export const safeString = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value);
+};
+
+export const safeTrim = (value) => {
+  return safeString(value).trim();
+};
+
+export const safeLower = (value) => {
+  return safeString(value).toLowerCase();
+};
+
+export const safeIncludes = (haystack, needle) => {
+  return safeString(haystack)
+    .toLowerCase()
+    .includes(safeString(needle).toLowerCase());
+};
+
+// Safe number conversion
+export const safeNumber = (value) => {
+  const num = Number(value);
+  return isNaN(num) ? 0 : num;
+};

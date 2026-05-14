@@ -66,22 +66,41 @@ export default function AdminProducts() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.title || !formData.price) {
-      toast.error('Please fill in required fields');
+    if (e && e.preventDefault) e.preventDefault();
+    
+    // Title safe string validation
+    const title = String(formData.title || '').trim();
+    if (!title) {
+      toast.error('Product title is required');
       return;
     }
+
+    // Price must be a number, do not call trim on it
+    const priceNum = Number(formData.price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast.error('Price must be a valid number greater than 0');
+      return;
+    }
+
+    const payload = {
+      title: title,
+      price: priceNum,
+      category: String(formData.category || '').trim(),
+      description: String(formData.description || '').trim(),
+      image: String(formData.image || '').trim(),
+      availability: Boolean(formData.availability)
+    };
 
     setSubmitLoading(true);
     try {
       if (editingProduct) {
-        const res = await api.put(`/products/${editingProduct._id}`, formData);
+        const res = await api.put(`/products/${editingProduct._id}`, payload);
         if (res.data.success) {
           setProducts(prev => prev.map(p => p._id === editingProduct._id ? res.data.product : p));
           toast.success('Product updated! ✨');
         }
       } else {
-        const res = await api.post('/products', formData);
+        const res = await api.post('/products', payload);
         if (res.data.success) {
           setProducts([res.data.product, ...products]);
           toast.success('New dessert created! 🍰');
